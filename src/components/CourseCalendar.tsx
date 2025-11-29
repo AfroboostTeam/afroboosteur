@@ -191,16 +191,16 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const formatTime = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleTimeString('en-US', {
+    return actualDate.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: false
     });
   };
 
   const formatDate = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleDateString('en-US', {
+    return actualDate.toLocaleDateString('fr-FR', {
       weekday: 'short',
       month: 'short',
       day: 'numeric'
@@ -209,7 +209,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const formatDateDetailed = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleDateString('en-US', {
+    return actualDate.toLocaleDateString('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -221,7 +221,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const getDayOfWeek = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleDateString('en-US', { weekday: 'short' });
+    return actualDate.toLocaleDateString('fr-FR', { weekday: 'short' });
   };
 
   const getDayOfMonth = (date: Date | any) => {
@@ -273,7 +273,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const getCalendarTitle = () => {
     if (viewMode === 'day') {
-      return currentDate.toLocaleDateString('en-US', {
+      return currentDate.toLocaleDateString('fr-FR', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -285,9 +285,9 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-      return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      return `${startOfWeek.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     } else {
-      return currentDate.toLocaleDateString('en-US', {
+      return currentDate.toLocaleDateString('fr-FR', {
         year: 'numeric',
         month: 'long'
       });
@@ -474,7 +474,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       setConfirmationModal({
         show: true,
         type: 'move',
-        message: `Course successfully moved to ${targetDate.toLocaleDateString()}`,
+        message: `Course successfully moved to ${targetDate.toLocaleDateString('fr-FR')}`,
         onConfirm: () => setConfirmationModal({ ...confirmationModal, show: false })
       });
     } catch (error) {
@@ -521,7 +521,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     setConfirmationModal({
       show: true,
       type: 'move',
-      message: `Move ${selectedScheduleIds.size} selected schedule(s) to ${targetDate.toLocaleDateString()}?`,
+      message: `Move ${selectedScheduleIds.size} selected schedule(s) to ${targetDate.toLocaleDateString('fr-FR')}?`,
       onConfirm: async () => {
         try {
           const selectedSchedules = schedules.filter(s => selectedScheduleIds.has(s.id));
@@ -563,7 +563,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     setConfirmationModal({
       show: true,
       type: 'duplicate',
-      message: `Duplicate ${selectedScheduleIds.size} selected schedule(s) to ${targetDate.toLocaleDateString()}?`,
+      message: `Duplicate ${selectedScheduleIds.size} selected schedule(s) to ${targetDate.toLocaleDateString('fr-FR')}?`,
       onConfirm: async () => {
         try {
           const selectedSchedules = schedules.filter(s => selectedScheduleIds.has(s.id));

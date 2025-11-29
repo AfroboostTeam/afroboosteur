@@ -641,7 +641,7 @@ export default function CourseDetail() {
   };
 
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -813,7 +813,7 @@ export default function CourseDetail() {
                           <div className="flex items-center text-gray-300 text-xs sm:text-sm">
                             <FiCalendar className="mr-2 text-[#D91CD2] flex-shrink-0" size={14} />
                             <span className="font-medium">
-                              {startTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                              {startTime.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                             </span>
                           </div>
 
@@ -821,7 +821,7 @@ export default function CourseDetail() {
                           <div className="flex items-center text-gray-300 text-xs sm:text-sm">
                             <FiClock className="mr-2 text-[#D91CD2] flex-shrink-0" size={14} />
                             <span className="font-medium">
-                              {startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              {startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })} - {endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </span>
                           </div>
 

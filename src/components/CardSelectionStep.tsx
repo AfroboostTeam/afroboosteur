@@ -94,10 +94,14 @@ export default function CardSelectionStep({
               className="bg-gray-900 rounded-xl w-full max-w-md max-h-[95vh] sm:max-h-[90vh] flex flex-col"
             >
               {/* Header */}
-              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-700">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-semibold truncate pr-2">{t('Step 1: Apply Gift or Discount Card')}</h3>
-                  <p className="text-sm text-gray-400 mt-1">{t('Scan or enter your gift card or discount code (optional)')}</p>
+              <div className="flex justify-between items-start p-4 sm:p-6 border-b border-gray-700 gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white break-words">
+                    {t('Step 1: Apply Gift or Discount Card')}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1 break-words">
+                    {t('Scan or enter your gift card or discount code (optional)')}
+                  </p>
                 </div>
                 <button
                   onClick={onClose}

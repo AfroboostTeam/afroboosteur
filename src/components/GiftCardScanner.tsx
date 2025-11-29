@@ -376,7 +376,7 @@ export default function GiftCardScanner({
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gray-900 rounded-lg max-w-md w-full"
+        className="bg-gray-900 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-700"
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -412,14 +412,14 @@ export default function GiftCardScanner({
 
 
           {/* Method Selection */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="flex flex-col gap-2 mb-6">
             <button
               onClick={() => {
                 stopCamera();
                 setUseManualEntry(false);
                 setUseCameraScanner(false);
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 !useManualEntry && !useCameraScanner
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
@@ -435,7 +435,7 @@ export default function GiftCardScanner({
                 setUseCameraScanner(true); // Set this first
                 await startCamera();
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 useCameraScanner
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
@@ -450,7 +450,7 @@ export default function GiftCardScanner({
                 setUseManualEntry(true);
                 setUseCameraScanner(false);
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 useManualEntry
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
