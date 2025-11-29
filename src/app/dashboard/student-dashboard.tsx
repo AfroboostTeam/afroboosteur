@@ -19,7 +19,7 @@ import { toDate, formatDate, isFutureDate } from '@/lib/dateUtils';
 
 
 const StudentDashboard = () => {
-  
+
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState('sessions');
@@ -35,7 +35,7 @@ const StudentDashboard = () => {
 
   const loadData = async () => {
     if (!user?.id) return;
-    
+
     setIsLoading(true);
     try {
       // Load bookings and notifications in parallel
@@ -43,7 +43,7 @@ const StudentDashboard = () => {
         bookingService.getByStudent(user.id),
         notificationService.getByUser(user.id)
       ]);
-      
+
       setBookings(userBookings);
       setNotifications(userNotifications);
     } catch (error) {
@@ -60,9 +60,9 @@ const StudentDashboard = () => {
   const remainingSessions = upcomingSessions.length;
 
   const getLocalizedDate = (dateOrTimestamp: any): string => {
-    return formatDate(dateOrTimestamp, 
-      i18n.language === 'en' ? 'en-US' : 
-      i18n.language === 'fr' ? 'fr-FR' : 'de-DE'
+    return formatDate(dateOrTimestamp,
+      i18n.language === 'en' ? 'en-US' :
+        i18n.language === 'fr' ? 'fr-FR' : 'de-DE'
     );
   };
 
@@ -96,56 +96,60 @@ const StudentDashboard = () => {
         <Card className="sticky top-24">
           <h2 className="text-xl font-semibold mb-6">{t('dashboard')}</h2>
           <nav className="space-y-2">
+            {/* My Reservations - moved to top */}
+            <button
+              onClick={() => setActiveTab('reservations')}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'reservations' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
+            >
+              <FiCheckCircle className="mr-3" />
+              {t('My Reservations')}
+            </button>
+
             <button
               onClick={() => setActiveTab('sessions')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'sessions' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'sessions' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiCalendar className="mr-3" />
               {t('mySessions')}
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'history' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'history' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiClock className="mr-3" />
               {t('sessionHistory')}
             </button>
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'notifications' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'notifications' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiBell className="mr-3" />
               {t('notifications')}
             </button>
             <button
               onClick={() => setActiveTab('chat')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'chat' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'chat' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiMessageCircle className="mr-3" />
               {t('Community Chat')}
             </button>
             <button
               onClick={() => setActiveTab('progress')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'progress' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'progress' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiTrendingUp className="mr-3" />
               {t('myProgress')}
             </button>
             <button
               onClick={() => setActiveTab('my-courses')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'my-courses' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'my-courses' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiPackage className="mr-3" />
               {t('My Courses')}
@@ -153,9 +157,8 @@ const StudentDashboard = () => {
 
             <button
               onClick={() => setActiveTab('credits')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'credits' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'credits' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiDollarSign className="mr-3" />
               {t('Credits & History')}
@@ -163,9 +166,8 @@ const StudentDashboard = () => {
 
             <button
               onClick={() => setActiveTab('tokens')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'tokens' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'tokens' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiPackage className="mr-3" />
               {t('Token Usage')}
@@ -173,22 +175,11 @@ const StudentDashboard = () => {
 
             <button
               onClick={() => setActiveTab('referrals')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'referrals' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
+              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${activeTab === 'referrals' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
+                }`}
             >
               <FiUsers className="mr-3" />
               {t('Referral Program')}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('reservations')}
-              className={`w-full text-left px-4 py-3 rounded-lg flex items-center ${
-                activeTab === 'reservations' ? 'bg-[#D91CD2]/20 text-[#D91CD2]' : 'hover:bg-black/40'
-              }`}
-            >
-              <FiCheckCircle className="mr-3" />
-              {t('My Reservations')}
             </button>
           </nav>
         </Card>
@@ -209,7 +200,7 @@ const StudentDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold">{t('mySessions')}</h2>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="bg-black/40 p-4 rounded-lg">
                     <p className="text-sm text-gray-400">{t('purchased')}</p>
@@ -234,7 +225,7 @@ const StudentDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold">{t('Upcoming Sessions')}</h2>
                 </div>
-                
+
                 <div className="space-y-4">
                   {upcomingSessions.length > 0 ? (
                     upcomingSessions
@@ -270,73 +261,7 @@ const StudentDashboard = () => {
             initial="hidden"
             animate="show"
           >
-            <motion.div variants={item}>
-              <Card>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">{t('sessionHistory')}</h2>
-                </div>
-                
-                <div className="space-y-4">
-                  {bookings.filter(booking => booking.status === 'completed').length > 0 ? (
-                    bookings
-                      .filter(booking => booking.status === 'completed')
-                      .sort((a, b) => toDate(b.scheduledDate).getTime() - toDate(a.scheduledDate).getTime())
-                      .map(booking => (
-                        <div key={booking.id} className="bg-black/40 p-4 rounded-lg flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">Booking #{booking.id.slice(0, 8)}</h3>
-                            <p className="text-sm text-gray-400">
-                              {getLocalizedDate(booking.scheduledDate)}
-                            </p>
-                          </div>
-                          <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm">
-                            {t('Completed')}
-                          </span>
-                        </div>
-                      ))
-                  ) : (
-                    bookings
-                      .filter(booking => booking.status === 'confirmed')
-                      .sort((a, b) => toDate(b.scheduledDate).getTime() - toDate(a.scheduledDate).getTime())
-                      .map(booking => (
-                        <div key={booking.id} className="bg-black/40 p-4 rounded-lg flex flex-col sm:flex-row justify-between">
-                          <div>
-                            <h3 className="font-medium">Booking #{booking.id.slice(0, 8)}</h3>
-                            <p className="text-sm text-gray-400">
-                              {getLocalizedDate(booking.scheduledDate)}
-                            </p>
-                          </div>
-                          <div className="flex items-center mt-3 sm:mt-0">
-                            <span className="px-3 py-1 bg-blue-500/20 text-blue-500 rounded-full text-sm mr-3">
-                              {t('Active')}
-                            </span>
-                            <button 
-                              onClick={async () => {
-                                if (confirm('Are you sure you want to mark this course as completed?')) {
-                                  try {
-                                    await bookingService.update(booking.id, { 
-                                      status: 'completed',
-                                      updatedAt: new Date()
-                                    });
-                                    
-                                    // Refresh data
-                                    loadData();
-                                  } catch (error) {
-                                    console.error('Error completing course:', error);
-                                  }
-                                }
-                              }}
-                              className="text-sm text-[#D91CD2] hover:underline"
-                            >
-                              {t('Mark as Completed')}
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </Card>
-            </motion.div>
+            <SessionOverview />
           </motion.div>
         )}
 
@@ -352,7 +277,7 @@ const StudentDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold">{t('notifications')}</h2>
                 </div>
-                
+
                 {notifications.length > 0 ? (
                   <div className="space-y-4">
                     {notifications
@@ -367,12 +292,12 @@ const StudentDashboard = () => {
                           </div>
                           <p className="text-sm text-gray-300 mt-1">{notification.message}</p>
                           <div className="flex justify-end mt-2">
-                            <button 
+                            <button
                               onClick={async () => {
                                 if (!notification.read) {
                                   await notificationService.markAsRead(notification.id);
-                                  setNotifications(prev => prev.map(n => 
-                                    n.id === notification.id ? {...n, read: true} : n
+                                  setNotifications(prev => prev.map(n =>
+                                    n.id === notification.id ? { ...n, read: true } : n
                                   ));
                                 }
                               }}
@@ -408,7 +333,7 @@ const StudentDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold">{t('Community Chat')}</h2>
                 </div>
-                
+
                 <div className="bg-black/40 p-8 rounded-lg text-center">
                   <FiMessageCircle className="mx-auto text-4xl text-gray-500 mb-3" />
                   <p className="text-gray-400 mb-4">{t('Connect with other dancers and share your experience!')}</p>
@@ -433,21 +358,21 @@ const StudentDashboard = () => {
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-semibold">{t('myProgress')}</h2>
                 </div>
-                
+
                 <div className="space-y-6">
                   <div className="bg-black/40 p-4 rounded-lg">
                     <h3 className="font-medium mb-2">{t('Sessions Completed')}</h3>
                     <div className="flex items-center">
                       <div className="w-full bg-gray-700 rounded-full h-4">
-                        <div 
-                          className="bg-[#D91CD2] h-4 rounded-full" 
+                        <div
+                          className="bg-[#D91CD2] h-4 rounded-full"
                           style={{ width: `${(completedSessions / Math.max(totalPurchased, 1)) * 100}%` }}
                         ></div>
                       </div>
                       <span className="ml-4 font-medium">{completedSessions}/{totalPurchased}</span>
                     </div>
                   </div>
-                  
+
                   <div className="bg-black/40 p-4 rounded-lg">
                     <h3 className="font-medium mb-4">{t('Dance Skills')}</h3>
                     <p className="text-gray-400 text-center">{t('Complete more sessions to track your progress!')}</p>

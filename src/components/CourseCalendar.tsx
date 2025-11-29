@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next'; // Import useTranslation
-import { 
-  FiCalendar, 
-  FiChevronLeft, 
-  FiChevronRight, 
-  FiFilter, 
-  FiMapPin, 
-  FiClock, 
-  FiUsers, 
+import {
+  FiCalendar,
+  FiChevronLeft,
+  FiChevronRight,
+  FiFilter,
+  FiMapPin,
+  FiClock,
+  FiUsers,
   FiBookOpen,
   FiPlus,
   FiEdit3,
@@ -77,7 +77,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
   const [searchTerm, setSearchTerm] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [scannerSchedule, setScannerSchedule] = useState<CourseSchedule | null>(null);
-  
+
   // Enhanced state for drag-and-drop and bulk operations
   const [draggedSchedule, setDraggedSchedule] = useState<CourseSchedule | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
@@ -89,8 +89,8 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     type: 'delete' | 'move' | 'duplicate';
     message: string;
     onConfirm: () => void;
-  }>({ show: false, type: 'delete', message: '', onConfirm: () => {} });
-  
+  }>({ show: false, type: 'delete', message: '', onConfirm: () => { } });
+
   const [formData, setFormData] = useState<ScheduleFormData>({
     courseId: '',
     startTime: new Date(),
@@ -112,11 +112,11 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     try {
       const [schedulesData, coursesData] = await Promise.all([
         scheduleService.getAll(),
-        showManagement && user?.role === 'coach' 
-          ? courseService.getByCoach(user.id) 
+        showManagement && user?.role === 'coach'
+          ? courseService.getByCoach(user.id)
           : courseService.getAll()
       ]);
-      
+
       setSchedules(schedulesData);
       setCourses(coursesData);
     } catch (error) {
@@ -138,13 +138,13 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       // Search filter
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           course.title.toLowerCase().includes(searchLower) ||
           course.description.toLowerCase().includes(searchLower) ||
           course.coachName.toLowerCase().includes(searchLower) ||
           (schedule.location && schedule.location.toLowerCase().includes(searchLower)) ||
           (schedule.description && schedule.description.toLowerCase().includes(searchLower));
-        
+
         if (!matchesSearch) return false;
       }
 
@@ -155,8 +155,8 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       if (filterCategory !== 'all' && course.category !== filterCategory) return false;
 
       // Filter by date range based on view mode
-      const scheduleDate = schedule.startTime instanceof Date 
-        ? schedule.startTime 
+      const scheduleDate = schedule.startTime instanceof Date
+        ? schedule.startTime
         : schedule.startTime.toDate();
 
       if (viewMode === 'day') {
@@ -181,7 +181,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     startOfWeek.setDate(date2.getDate() - date2.getDay());
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
-    
+
     return date1 >= startOfWeek && date1 <= endOfWeek;
   };
 
@@ -191,28 +191,28 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const formatTime = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return actualDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
   const formatDate = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleDateString('en-US', { 
+    return actualDate.toLocaleDateString('en-US', {
       weekday: 'short',
-      month: 'short', 
-      day: 'numeric' 
+      month: 'short',
+      day: 'numeric'
     });
   };
 
   const formatDateDetailed = (date: Date | any) => {
     const actualDate = date instanceof Date ? date : date.toDate();
-    return actualDate.toLocaleDateString('en-US', { 
+    return actualDate.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
-      month: 'long', 
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -236,22 +236,22 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(firstDay.getDate() - firstDay.getDay());
-    
+
     const days = [];
     const currentCalendarDate = new Date(startDate);
-    
+
     for (let i = 0; i < 42; i++) { // 6 weeks * 7 days
       days.push(new Date(currentCalendarDate));
       currentCalendarDate.setDate(currentCalendarDate.getDate() + 1);
     }
-    
+
     return days;
   };
 
   const getSchedulesForDay = (date: Date) => {
     return filteredSchedules.filter(schedule => {
-      const scheduleDate = schedule.startTime instanceof Date 
-        ? schedule.startTime 
+      const scheduleDate = schedule.startTime instanceof Date
+        ? schedule.startTime
         : schedule.startTime.toDate();
       return isSameDay(scheduleDate, date);
     });
@@ -259,7 +259,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
-    
+
     if (viewMode === 'day') {
       newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
     } else if (viewMode === 'week') {
@@ -267,29 +267,29 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     } else {
       newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
     }
-    
+
     setCurrentDate(newDate);
   };
 
   const getCalendarTitle = () => {
     if (viewMode === 'day') {
-      return currentDate.toLocaleDateString('en-US', { 
+      return currentDate.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
-        month: 'long', 
-        day: 'numeric' 
+        month: 'long',
+        day: 'numeric'
       });
     } else if (viewMode === 'week') {
       const startOfWeek = new Date(currentDate);
       startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      
+
       return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
     } else {
-      return currentDate.toLocaleDateString('en-US', { 
+      return currentDate.toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long' 
+        month: 'long'
       });
     }
   };
@@ -452,13 +452,13 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
     const newStartTime = new Date(targetDate);
     newStartTime.setHours(
-      draggedSchedule.startTime instanceof Date 
-        ? draggedSchedule.startTime.getHours() 
+      draggedSchedule.startTime instanceof Date
+        ? draggedSchedule.startTime.getHours()
         : draggedSchedule.startTime.toDate().getHours()
     );
     newStartTime.setMinutes(
-      draggedSchedule.startTime instanceof Date 
-        ? draggedSchedule.startTime.getMinutes() 
+      draggedSchedule.startTime instanceof Date
+        ? draggedSchedule.startTime.getMinutes()
         : draggedSchedule.startTime.toDate().getMinutes()
     );
 
@@ -527,17 +527,17 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
           const selectedSchedules = schedules.filter(s => selectedScheduleIds.has(s.id));
           await Promise.all(
             selectedSchedules.map(schedule => {
-              const originalStart = schedule.startTime instanceof Date 
-                ? schedule.startTime 
+              const originalStart = schedule.startTime instanceof Date
+                ? schedule.startTime
                 : schedule.startTime.toDate();
-              const originalEnd = schedule.endTime instanceof Date 
-                ? schedule.endTime 
+              const originalEnd = schedule.endTime instanceof Date
+                ? schedule.endTime
                 : schedule.endTime.toDate();
-              
+
               const newStartTime = new Date(targetDate);
               newStartTime.setHours(originalStart.getHours());
               newStartTime.setMinutes(originalStart.getMinutes());
-              
+
               const timeDiff = originalEnd.getTime() - originalStart.getTime();
               const newEndTime = new Date(newStartTime.getTime() + timeDiff);
 
@@ -569,17 +569,17 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
           const selectedSchedules = schedules.filter(s => selectedScheduleIds.has(s.id));
           await Promise.all(
             selectedSchedules.map(schedule => {
-              const originalStart = schedule.startTime instanceof Date 
-                ? schedule.startTime 
+              const originalStart = schedule.startTime instanceof Date
+                ? schedule.startTime
                 : schedule.startTime.toDate();
-              const originalEnd = schedule.endTime instanceof Date 
-                ? schedule.endTime 
+              const originalEnd = schedule.endTime instanceof Date
+                ? schedule.endTime
                 : schedule.endTime.toDate();
-              
+
               const newStartTime = new Date(targetDate);
               newStartTime.setHours(originalStart.getHours());
               newStartTime.setMinutes(originalStart.getMinutes());
-              
+
               const timeDiff = originalEnd.getTime() - originalStart.getTime();
               const newEndTime = new Date(newStartTime.getTime() + timeDiff);
 
@@ -618,7 +618,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
   };
 
   const categories = [
-    'Afrobeat', 'Hip-Hop', 'Contemporary', 'Salsa', 'Bachata', 
+    'Afrobeat', 'Hip-Hop', 'Contemporary', 'Salsa', 'Bachata',
     'Kizomba', 'Jazz', 'Ballet', 'Breakdance', 'Latin'
   ];
 
@@ -643,16 +643,16 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       const scheduleDate = s.startTime instanceof Date ? s.startTime : s.startTime.toDate();
       return scheduleDate > new Date();
     }).length;
-    
+
     const levelCounts = filteredSchedules.reduce((acc, schedule) => {
       acc[schedule.level] = (acc[schedule.level] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     const categoryCount = new Set(
       filteredSchedules.map(s => getCourseById(s.courseId)?.category).filter(Boolean)
     ).size;
-    
+
     return {
       total: totalSchedules,
       upcoming: upcomingSchedules,
@@ -663,7 +663,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const CalendarStats = () => {
     const stats = getCalendarStats();
-    
+
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-gradient-to-r from-[#D91CD2]/20 to-[#7000FF]/20 p-4 rounded-lg border border-[#D91CD2]/30">
@@ -700,570 +700,556 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     <div className="space-y-6">
       {/* Header */}
       <Card>
-    <div className="flex flex-col space-y-4 sm:space-y-6">
-        {/* Header Section */}
-        <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
-          <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('courseCalendar')}</h2>
-          
-          {showManagement && user?.role === 'coach' && (
-            <button
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
-            >
-              <FiPlus size={20} />
-              <span>{t('scheduleCourse')}</span>
-            </button>
-          )}
-        </div>
+        <div className="flex flex-col space-y-4 sm:space-y-6">
+          {/* Header Section */}
+          <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
+            <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('courseCalendar')}</h2>
 
-        {/* Controls Section */}
-        <div className="space-y-4">
-          {/* Search Bar */}
-          <div className="w-full">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiFilter className="text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder={t('searchCoursesCoachesLocations')}
-                className="input-primary w-full pl-10 text-sm sm:text-base"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* View Mode and Calendar Toggle Row */}
-          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:items-center">
-            {/* View Mode Selector */}
-            <div className="flex-1 bg-black/40 rounded-lg p-1 min-w-0">
-              {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`flex-1 min-w-[120px] px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${
-                  viewMode === mode
-                    ? 'bg-[#D91CD2] text-white'
-                    : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {mode === 'list' ? <FiList size={16} /> : <FiCalendar size={16} />}
-                  <span className="truncate">{t(mode)}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Calendar View Toggle for Month/Week view */}
-            {(viewMode === 'month' || viewMode === 'week') && (
-              <div className="flex bg-black/40 rounded-lg p-1 min-w-0">
-                <button
-                  onClick={() => setCalendarView('calendar')}
-                  className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${
-                    calendarView === 'calendar'
-                      ? 'bg-[#D91CD2] text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <FiGrid size={16} />
-                  <span className="hidden sm:inline">{t('grid')}</span>
-                </button>
-                <button
-                  onClick={() => setCalendarView('timeline')}
-                  className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${
-                    calendarView === 'timeline'
-                      ? 'bg-[#D91CD2] text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <FiList size={16} />
-                  <span className="hidden sm:inline">{t('timeline')}</span>
-                </button>
-              </div>
+            {showManagement && user?.role === 'coach' && (
+              <button
+                onClick={() => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }}
+                className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
+              >
+                <FiPlus size={20} />
+                <span>{t('scheduleCourse')}</span>
+              </button>
             )}
           </div>
 
-          {/* Management Controls */}
-          {showManagement && user?.role === 'coach' && (
-            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:items-center">
-              <button
-                onClick={() => setBulkMode(!bulkMode)}
-                className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                  bulkMode
-                    ? 'bg-[#D91CD2] text-white'
-                    : 'bg-black/40 text-gray-400 hover:text-white border border-gray-600'
-                }`}
-              >
-                <FiCheck size={16} />
-                <span>{t('bulkSelect')}</span>
-                <span>({selectedScheduleIds.size})</span>
-              </button>
+          {/* Controls Section */}
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="w-full">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiFilter className="text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder={t('searchCoursesCoachesLocations')}
+                  className="input-primary w-full pl-10 text-sm sm:text-base"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
 
-              {bulkMode && selectedScheduleIds.size > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-500/20 text-red-400 border border-red-400/30 hover:bg-red-500/30 transition-colors"
-                >
-                  <FiTrash2 size={16} />
-                  <span>{t('delete')}</span>
-                  <span>({selectedScheduleIds.size})</span>
-                </button>
+            {/* View Mode and Calendar Toggle Row */}
+            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:items-center">
+              {/* View Mode Selector */}
+              <div className="flex-1 bg-black/40 rounded-lg p-1 min-w-0">
+                {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`flex-1 min-w-[120px] px-2 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${viewMode === mode
+                        ? 'bg-[#D91CD2] text-white'
+                        : 'text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    {mode === 'list' ? <FiList size={16} /> : <FiCalendar size={16} />}
+                    <span className="truncate">{t(mode)}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Calendar View Toggle for Month/Week view */}
+              {(viewMode === 'month' || viewMode === 'week') && (
+                <div className="flex bg-black/40 rounded-lg p-1 min-w-0">
+                  <button
+                    onClick={() => setCalendarView('calendar')}
+                    className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${calendarView === 'calendar'
+                        ? 'bg-[#D91CD2] text-white'
+                        : 'text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    <FiGrid size={16} />
+                    <span className="hidden sm:inline">{t('grid')}</span>
+                  </button>
+                  <button
+                    onClick={() => setCalendarView('timeline')}
+                    className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1 sm:gap-2 ${calendarView === 'timeline'
+                        ? 'bg-[#D91CD2] text-white'
+                        : 'text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    <FiList size={16} />
+                    <span className="hidden sm:inline">{t('timeline')}</span>
+                  </button>
+                </div>
               )}
             </div>
-          )}
 
-          {/* Filters */}
-          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
-            <select
-              value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value as FilterLevel)}
-              className="input-primary text-sm w-full sm:w-auto sm:min-w-[120px]"
-            >
-              <option value="all">{t('allLevels')}</option>
-              <option value="beginner">{t('beginner')}</option>
-              <option value="intermediate">{t('intermediate')}</option>
-              <option value="advanced">{t('advanced')}</option>
-            </select>
+            {/* Management Controls */}
+            {showManagement && user?.role === 'coach' && (
+              <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 sm:items-center">
+                <button
+                  onClick={() => setBulkMode(!bulkMode)}
+                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${bulkMode
+                      ? 'bg-[#D91CD2] text-white'
+                      : 'bg-black/40 text-gray-400 hover:text-white border border-gray-600'
+                    }`}
+                >
+                  <FiCheck size={16} />
+                  <span>{t('bulkSelect')}</span>
+                  <span>({selectedScheduleIds.size})</span>
+                </button>
 
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="input-primary text-sm w-full sm:w-auto sm:min-w-[120px]"
-            >
-              <option value="all">{t('allCategories')}</option>
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
+                {bulkMode && selectedScheduleIds.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-500/20 text-red-400 border border-red-400/30 hover:bg-red-500/30 transition-colors"
+                  >
+                    <FiTrash2 size={16} />
+                    <span>{t('delete')}</span>
+                    <span>({selectedScheduleIds.size})</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3">
+              <select
+                value={filterLevel}
+                onChange={(e) => setFilterLevel(e.target.value as FilterLevel)}
+                className="input-primary text-sm w-full sm:w-auto sm:min-w-[120px]"
+              >
+                <option value="all">{t('allLevels')}</option>
+                <option value="beginner">{t('beginner')}</option>
+                <option value="intermediate">{t('intermediate')}</option>
+                <option value="advanced">{t('advanced')}</option>
+              </select>
+
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="input-primary text-sm w-full sm:w-auto sm:min-w-[120px]"
+              >
+                <option value="all">{t('allCategories')}</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
 
-        {/* Calendar Statistics */}
-        <CalendarStats />
+          {/* Calendar Statistics */}
+          <CalendarStats />
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigateDate('prev')}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <FiChevronLeft size={20} />
-          </button>
-          
-          <h3 className="text-base sm:text-lg font-semibold text-center px-4">{getCalendarTitle()}</h3>
-          
-          <button
-            onClick={() => navigateDate('next')}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <FiChevronRight size={20} />
-          </button>
-        </div>
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <FiChevronLeft size={20} />
+            </button>
 
-        {/* Calendar View */}
-        <div className="space-y-4">
-          {viewMode === 'list' ? (
-            /* List View */
-            <div className="space-y-4">
-              {filteredSchedules.length > 0 ? (
-                filteredSchedules
-                  .sort((a, b) => {
-                    const dateA = a.startTime instanceof Date ? a.startTime : a.startTime.toDate();
-                    const dateB = b.startTime instanceof Date ? b.startTime : b.startTime.toDate();
-                    return dateA.getTime() - dateB.getTime();
-                  })
-                  .map((schedule) => {
-                    const course = getCourseById(schedule.courseId);
-                    if (!course) return null;
+            <h3 className="text-base sm:text-lg font-semibold text-center px-4">{getCalendarTitle()}</h3>
 
-                    return (
-                      <motion.div
-                        key={schedule.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        draggable={showManagement && user?.role === 'coach'}
-                        onDragStart={() => handleDragStart(schedule)}
-                        onDragEnd={handleDragEnd}
-                        className={`bg-black/40 rounded-lg p-4 sm:p-6 border border-gray-700/30 hover:border-[#D91CD2]/30 transition-colors relative ${
-                          draggedSchedule?.id === schedule.id ? 'opacity-50' : ''
-                        } ${
-                          selectedScheduleIds.has(schedule.id) ? 'ring-2 ring-[#D91CD2]' : ''
-                        } ${
-                          showManagement && user?.role === 'coach' ? 'cursor-move' : ''
-                        }`}
-                      >
-                        {/* Bulk Selection Checkbox */}
-                        {bulkMode && showManagement && user?.role === 'coach' && (
-                          <div className="absolute top-4 left-4 z-10">
-                            <input
-                              type="checkbox"
-                              checked={selectedScheduleIds.has(schedule.id)}
-                              onChange={() => toggleScheduleSelection(schedule.id)}
-                              className="w-4 h-4 sm:w-5 sm:h-5 text-[#D91CD2] bg-black/60 border-gray-600 rounded focus:ring-[#D91CD2] focus:ring-2"
-                            />
-                          </div>
-                        )}
+            <button
+              onClick={() => navigateDate('next')}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <FiChevronRight size={20} />
+            </button>
+          </div>
 
-                        {/* Drag Indicator */}
-                        {showManagement && user?.role === 'coach' && !bulkMode && (
-                          <div className="absolute top-4 right-4 text-gray-500">
-                            <FiMove size={20} />
-                          </div>
-                        )}
+          {/* Calendar View */}
+          <div className="space-y-4">
+            {viewMode === 'list' ? (
+              /* List View */
+              <div className="space-y-4">
+                {filteredSchedules.length > 0 ? (
+                  filteredSchedules
+                    .sort((a, b) => {
+                      const dateA = a.startTime instanceof Date ? a.startTime : a.startTime.toDate();
+                      const dateB = b.startTime instanceof Date ? b.startTime : b.startTime.toDate();
+                      return dateA.getTime() - dateB.getTime();
+                    })
+                    .map((schedule) => {
+                      const course = getCourseById(schedule.courseId);
+                      if (!course) return null;
 
-                        <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-6">
-                          {/* Course Image & Basic Info */}
-                          <div className="lg:col-span-1">
-                            <img
-                              src={course.imageUrl}
-                              alt={course.title}
-                              className="w-full h-32 object-cover rounded-lg mb-4"
-                            />
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <span className={`px-2 py-1 rounded-full text-xs border ${getLevelColor(schedule.level)}`}>
-                                {schedule.level}
-                              </span>
-                              <span className="text-sm text-gray-400">{course.category}</span>
+                      return (
+                        <motion.div
+                          key={schedule.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          draggable={showManagement && user?.role === 'coach'}
+                          onDragStart={() => handleDragStart(schedule)}
+                          onDragEnd={handleDragEnd}
+                          className={`bg-black/40 rounded-lg p-4 sm:p-6 border border-gray-700/30 hover:border-[#D91CD2]/30 transition-colors relative ${draggedSchedule?.id === schedule.id ? 'opacity-50' : ''
+                            } ${selectedScheduleIds.has(schedule.id) ? 'ring-2 ring-[#D91CD2]' : ''
+                            } ${showManagement && user?.role === 'coach' ? 'cursor-move' : ''
+                            }`}
+                        >
+                          {/* Bulk Selection Checkbox */}
+                          {bulkMode && showManagement && user?.role === 'coach' && (
+                            <div className="absolute top-4 left-4 z-10">
+                              <input
+                                type="checkbox"
+                                checked={selectedScheduleIds.has(schedule.id)}
+                                onChange={() => toggleScheduleSelection(schedule.id)}
+                                className="w-4 h-4 sm:w-5 sm:h-5 text-[#D91CD2] bg-black/60 border-gray-600 rounded focus:ring-[#D91CD2] focus:ring-2"
+                              />
                             </div>
-                          </div>
+                          )}
 
-                          {/* Course Details */}
-                          <div className="lg:col-span-2">
-                            <h4 className="font-bold text-lg sm:text-xl mb-2 text-white pr-8 lg:pr-0">{course.title}</h4>
-                            <p className="text-gray-300 mb-4 text-sm sm:text-base line-clamp-2">{course.description}</p>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm">
-                              <div className="flex items-center text-gray-400">
-                                <FiCalendar className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                <span className="truncate">{formatDate(schedule.startTime)}</span>
+                          {/* Drag Indicator */}
+                          {showManagement && user?.role === 'coach' && !bulkMode && (
+                            <div className="absolute top-4 right-4 text-gray-500">
+                              <FiMove size={20} />
+                            </div>
+                          )}
+
+                          <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-6">
+                            {/* Course Image & Basic Info */}
+                            <div className="lg:col-span-1">
+                              <img
+                                src={course.imageUrl}
+                                alt={course.title}
+                                className="w-full h-32 object-cover rounded-lg mb-4"
+                              />
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className={`px-2 py-1 rounded-full text-xs border ${getLevelColor(schedule.level)}`}>
+                                  {schedule.level}
+                                </span>
+                                <span className="text-sm text-gray-400">{course.category}</span>
                               </div>
-                              <div className="flex items-center text-gray-400">
-                                <FiClock className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                <span className="truncate">{formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
-                              </div>
-                              <div className="flex items-center text-gray-400">
-                                <FiUsers className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                <span className="truncate">{t('coach')}: {course.coachName}</span>
-                              </div>
-                              {schedule.location && (
+                            </div>
+
+                            {/* Course Details */}
+                            <div className="lg:col-span-2">
+                              <h4 className="font-bold text-lg sm:text-xl mb-2 text-white pr-8 lg:pr-0">{course.title}</h4>
+                              <p className="text-gray-300 mb-4 text-sm sm:text-base line-clamp-2">{course.description}</p>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm">
                                 <div className="flex items-center text-gray-400">
-                                  <FiMapPin className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                  <span className="truncate">{schedule.location}</span>
+                                  <FiCalendar className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                  <span className="truncate">{formatDate(schedule.startTime)}</span>
+                                </div>
+                                <div className="flex items-center text-gray-400">
+                                  <FiClock className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                  <span className="truncate">{formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
+                                </div>
+                                <div className="flex items-center text-gray-400">
+                                  <FiUsers className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                  <span className="truncate">{t('coach')}: {course.coachName}</span>
+                                </div>
+                                {schedule.location && (
+                                  <div className="flex items-center text-gray-400">
+                                    <FiMapPin className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                    <span className="truncate">{schedule.location}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center text-gray-400">
+                                  <FiStar className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                  <span className="truncate">{course.averageRating.toFixed(1)} ({course.totalReviews} {t('reviews')})</span>
+                                </div>
+                                <div className="flex items-center text-gray-400">
+                                  <FiUsers className="mr-2 text-[#D91CD2] flex-shrink-0" />
+                                  <span className="truncate">{course.currentStudents}/{course.maxStudents} {t('enrolled')}</span>
+                                </div>
+                              </div>
+
+                              {schedule.description && (
+                                <div className="mt-4">
+                                  <p className="text-sm text-gray-400">{schedule.description}</p>
                                 </div>
                               )}
-                              <div className="flex items-center text-gray-400">
-                                <FiStar className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                <span className="truncate">{course.averageRating.toFixed(1)} ({course.totalReviews} {t('reviews')})</span>
-                              </div>
-                              <div className="flex items-center text-gray-400">
-                                <FiUsers className="mr-2 text-[#D91CD2] flex-shrink-0" />
-                                <span className="truncate">{course.currentStudents}/{course.maxStudents} {t('enrolled')}</span>
-                              </div>
                             </div>
 
-                            {schedule.description && (
-                              <div className="mt-4">
-                                <p className="text-sm text-gray-400">{schedule.description}</p>
+                            {/* Action Buttons */}
+                            <div className="lg:col-span-1 flex flex-col justify-between">
+                              <div className="text-center lg:text-right mb-4">
+                                <div className="text-xl sm:text-2xl font-bold text-[#D91CD2] mb-2">
+                                  ${course.price}
+                                </div>
+                                <div className="text-sm text-gray-400">{t('perSession')}</div>
                               </div>
-                            )}
+
+                              <div className="space-y-2">
+                                <Link
+                                  href={`/courses/${course.id}`}
+                                  className="btn-secondary w-full text-center text-sm flex items-center justify-center gap-2"
+                                >
+                                  <FiEye size={16} />
+                                  {t('viewDetails')}
+                                </Link>
+
+                                {onBookCourse && (
+                                  <button
+                                    onClick={() => onBookCourse(course.id)}
+                                    className="btn-primary w-full text-sm"
+                                  >
+                                    {t('bookNow')}
+                                  </button>
+                                )}
+
+                                {showManagement && user?.role === 'coach' && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleEditSchedule(schedule)}
+                                      className="flex-1 p-2 hover:bg-white/10 rounded-lg transition-colors border border-gray-600 flex items-center justify-center gap-1"
+                                      title={t('editSchedule')}
+                                    >
+                                      <FiEdit3 size={16} />
+                                      <span className="text-xs hidden sm:inline">{t('edit')}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteSchedule(schedule.id)}
+                                      className="flex-1 p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 border border-red-400/30 flex items-center justify-center gap-1"
+                                      title={t('deleteSchedule')}
+                                    >
+                                      <FiTrash2 size={16} />
+                                      <span className="text-xs hidden sm:inline">{t('delete')}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const targetDate = new Date();
+                                        targetDate.setDate(targetDate.getDate() + 7);
+                                        handleBulkDuplicate(targetDate);
+                                      }}
+                                      className="flex-1 p-2 hover:bg-blue-500/20 rounded-lg transition-colors text-blue-400 border border-blue-400/30 flex items-center justify-center gap-1"
+                                      title={t('duplicateSchedule')}
+                                    >
+                                      <FiCopy size={16} />
+                                      <span className="text-xs hidden sm:inline">{t('copy')}</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
+                        </motion.div>
+                      );
+                    })
+                ) : (
+                  <div className="bg-black/40 p-6 sm:p-8 rounded-lg text-center">
+                    <FiCalendar size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-400 mb-4">{t('noCoursesFound')}</p>
+                    {showManagement && user?.role === 'coach' && (
+                      <button
+                        onClick={() => {
+                          resetForm();
+                          setIsModalOpen(true);
+                        }}
+                        className="btn-primary w-full sm:w-auto"
+                      >
+                        {t('scheduleYourFirstCourse')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : viewMode === 'month' && calendarView === 'calendar' ? (
+              /* Month Calendar Grid View */
+              <div className="bg-black/20 rounded-lg overflow-hidden">
+                {/* Calendar Header */}
+                <div className="grid grid-cols-7 gap-0 bg-gray-800/50">
+                  {[t('Sun'), t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat')].map(day => (
+                    <div key={day} className="p-2 sm:p-3 text-center font-medium text-gray-300 border-r border-gray-700 last:border-r-0">
+                      <span className="hidden sm:inline">{day}</span>
+                      <span className="sm:hidden text-xs">{day.slice(0, 1)}</span>
+                    </div>
+                  ))}
+                </div>
 
-                          {/* Action Buttons */}
-                          <div className="lg:col-span-1 flex flex-col justify-between">
-                            <div className="text-center lg:text-right mb-4">
-                              <div className="text-xl sm:text-2xl font-bold text-[#D91CD2] mb-2">
-                                ${course.price}
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-0">
+                  {getCalendarDays().map((day, index) => {
+                    const daySchedules = getSchedulesForDay(day);
+                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                    const isToday = isSameDay(day, new Date());
+                    const isDropTarget = dropTargetDate && isSameDay(dropTargetDate, day);
+
+                    return (
+                      <div
+                        key={index}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDrop={(e) => handleDrop(e, day)}
+                        className={`min-h-16 sm:min-h-24 p-1 sm:p-2 border-r border-b border-gray-700 last:border-r-0 transition-colors ${isCurrentMonth ? 'bg-black/40' : 'bg-gray-900/20'
+                          } ${isToday ? 'bg-[#D91CD2]/10 border-[#D91CD2]/30' : ''} ${isDropTarget ? 'bg-green-500/20 border-green-400' : ''
+                          } ${showManagement && user?.role === 'coach' && draggedSchedule ? 'hover:bg-blue-500/10' : ''
+                          }`}
+                      >
+                        <div className={`text-xs sm:text-sm font-medium mb-1 flex items-center justify-between ${isCurrentMonth ? 'text-white' : 'text-gray-500'
+                          } ${isToday ? 'text-[#D91CD2]' : ''}`}>
+                          <span>{getDayOfMonth(day)}</span>
+                          {isDropTarget && draggedSchedule && (
+                            <div className="text-green-400 text-xs hidden sm:inline">{t('dropHere')}</div>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          {daySchedules.slice(0, window.innerWidth < 640 ? 1 : 2).map((schedule, idx) => {
+                            const course = getCourseById(schedule.courseId);
+                            if (!course) return null;
+
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => setSelectedSchedule(schedule)}
+                                draggable={showManagement && user?.role === 'coach'}
+                                onDragStart={() => handleDragStart(schedule)}
+                                onDragEnd={handleDragEnd}
+                                className={`text-xs p-1 rounded cursor-pointer truncate border ${getLevelColor(schedule.level)} hover:opacity-80 transition-opacity ${draggedSchedule?.id === schedule.id ? 'opacity-50' : ''
+                                  } ${selectedScheduleIds.has(schedule.id) ? 'ring-1 ring-[#D91CD2]' : ''
+                                  } ${showManagement && user?.role === 'coach' ? 'cursor-move' : ''
+                                  }`}
+                              >
+                                {bulkMode && showManagement && user?.role === 'coach' && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedScheduleIds.has(schedule.id)}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleScheduleSelection(schedule.id);
+                                    }}
+                                    className="w-2 h-2 sm:w-3 sm:h-3 mr-1 text-[#D91CD2] bg-black/60 border-gray-600 rounded"
+                                  />
+                                )}
+                                <span className="hidden sm:inline">{formatTime(schedule.startTime)} </span>
+                                <span className="truncate">{course.title}</span>
                               </div>
-                              <div className="text-sm text-gray-400">{t('perSession')}</div>
+                            );
+                          })}
+                          {daySchedules.length > (window.innerWidth < 640 ? 1 : 2) && (
+                            <div className="text-xs text-gray-400 font-medium">
+                              +{daySchedules.length - (window.innerWidth < 640 ? 1 : 2)} {t('more')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* Timeline View for Week/Month and Week/Day views */
+              <div className="space-y-4">
+                {filteredSchedules.length > 0 ? (
+                  filteredSchedules
+                    .sort((a, b) => {
+                      const dateA = a.startTime instanceof Date ? a.startTime : a.startTime.toDate();
+                      const dateB = b.startTime instanceof Date ? b.startTime : b.startTime.toDate();
+                      return dateA.getTime() - dateB.getTime();
+                    })
+                    .map((schedule) => {
+                      const course = getCourseById(schedule.courseId);
+                      if (!course) return null;
+
+                      return (
+                        <motion.div
+                          key={schedule.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-black/40 rounded-lg p-4 border border-gray-700/30 hover:border-[#D91CD2]/30 transition-colors cursor-pointer"
+                          onClick={() => setSelectedSchedule(schedule)}
+                        >
+                          <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-center lg:space-y-0">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                                <h4 className="font-semibold text-base sm:text-lg truncate">{course.title}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs border ${getLevelColor(schedule.level)} self-start`}>
+                                  {schedule.level}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 text-sm">
+                                <div className="flex items-center text-gray-400">
+                                  <FiCalendar className="mr-2 flex-shrink-0" />
+                                  <span className="truncate">{formatDate(schedule.startTime)}</span>
+                                </div>
+                                <div className="flex items-center text-gray-400">
+                                  <FiClock className="mr-2 flex-shrink-0" />
+                                  <span className="truncate">{formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
+                                </div>
+                                {schedule.location && (
+                                  <div className="flex items-center text-gray-400">
+                                    <FiMapPin className="mr-2 flex-shrink-0" />
+                                    <span className="truncate">{schedule.location}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center text-gray-400">
+                                  <FiUsers className="mr-2 flex-shrink-0" />
+                                  <span className="truncate">{course.currentStudents}/{course.maxStudents}</span>
+                                </div>
+                                <div className="flex items-center text-gray-400">
+                                  <FiDollarSign className="mr-2 flex-shrink-0" />
+                                  <span className="truncate">${course.price}</span>
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <Link 
-                                href={`/courses/${course.id}`}
-                                className="btn-secondary w-full text-center text-sm flex items-center justify-center gap-2"
-                              >
-                                <FiEye size={16} />
-                                {t('viewDetails')}
-                              </Link>
-                              
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                               {onBookCourse && (
                                 <button
-                                  onClick={() => onBookCourse(course.id)}
-                                  className="btn-primary w-full text-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBookCourse(course.id);
+                                  }}
+                                  className="btn-primary text-sm px-4 py-2"
                                 >
                                   {t('bookNow')}
                                 </button>
                               )}
-                              
+
                               {showManagement && user?.role === 'coach' && (
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => handleEditSchedule(schedule)}
-                                    className="flex-1 p-2 hover:bg-white/10 rounded-lg transition-colors border border-gray-600 flex items-center justify-center gap-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditSchedule(schedule);
+                                    }}
+                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                                     title={t('editSchedule')}
                                   >
                                     <FiEdit3 size={16} />
-                                    <span className="text-xs hidden sm:inline">{t('edit')}</span>
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteSchedule(schedule.id)}
-                                    className="flex-1 p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400 border border-red-400/30 flex items-center justify-center gap-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSchedule(schedule.id);
+                                    }}
+                                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400"
                                     title={t('deleteSchedule')}
                                   >
                                     <FiTrash2 size={16} />
-                                    <span className="text-xs hidden sm:inline">{t('delete')}</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const targetDate = new Date();
-                                      targetDate.setDate(targetDate.getDate() + 7);
-                                      handleBulkDuplicate(targetDate);
-                                    }}
-                                    className="flex-1 p-2 hover:bg-blue-500/20 rounded-lg transition-colors text-blue-400 border border-blue-400/30 flex items-center justify-center gap-1"
-                                    title={t('duplicateSchedule')}
-                                  >
-                                    <FiCopy size={16} />
-                                    <span className="text-xs hidden sm:inline">{t('copy')}</span>
                                   </button>
                                 </div>
                               )}
                             </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })
-              ) : (
-                <div className="bg-black/40 p-6 sm:p-8 rounded-lg text-center">
-                  <FiCalendar size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-400 mb-4">{t('noCoursesFound')}</p>
-                  {showManagement && user?.role === 'coach' && (
-                    <button
-                      onClick={() => {
-                        resetForm();
-                        setIsModalOpen(true);
-                      }}
-                      className="btn-primary w-full sm:w-auto"
-                    >
-                      {t('scheduleYourFirstCourse')}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : viewMode === 'month' && calendarView === 'calendar' ? (
-            /* Month Calendar Grid View */
-            <div className="bg-black/20 rounded-lg overflow-hidden">
-              {/* Calendar Header */}
-              <div className="grid grid-cols-7 gap-0 bg-gray-800/50">
-                {[t('Sun'), t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat')].map(day => (
-                  <div key={day} className="p-2 sm:p-3 text-center font-medium text-gray-300 border-r border-gray-700 last:border-r-0">
-                    <span className="hidden sm:inline">{day}</span>
-                    <span className="sm:hidden text-xs">{day.slice(0, 1)}</span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-0">
-                {getCalendarDays().map((day, index) => {
-                  const daySchedules = getSchedulesForDay(day);
-                  const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                  const isToday = isSameDay(day, new Date());
-                  const isDropTarget = dropTargetDate && isSameDay(dropTargetDate, day);
-                  
-                  return (
-                    <div
-                      key={index}
-                      onDragOver={(e) => handleDragOver(e, day)}
-                      onDrop={(e) => handleDrop(e, day)}
-                      className={`min-h-16 sm:min-h-24 p-1 sm:p-2 border-r border-b border-gray-700 last:border-r-0 transition-colors ${
-                        isCurrentMonth ? 'bg-black/40' : 'bg-gray-900/20'
-                      } ${isToday ? 'bg-[#D91CD2]/10 border-[#D91CD2]/30' : ''} ${
-                        isDropTarget ? 'bg-green-500/20 border-green-400' : ''
-                      } ${
-                        showManagement && user?.role === 'coach' && draggedSchedule ? 'hover:bg-blue-500/10' : ''
-                      }`}
-                    >
-                      <div className={`text-xs sm:text-sm font-medium mb-1 flex items-center justify-between ${
-                        isCurrentMonth ? 'text-white' : 'text-gray-500'
-                      } ${isToday ? 'text-[#D91CD2]' : ''}`}>
-                        <span>{getDayOfMonth(day)}</span>
-                        {isDropTarget && draggedSchedule && (
-                          <div className="text-green-400 text-xs hidden sm:inline">{t('dropHere')}</div>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-1">
-                        {daySchedules.slice(0, window.innerWidth < 640 ? 1 : 2).map((schedule, idx) => {
-                          const course = getCourseById(schedule.courseId);
-                          if (!course) return null;
-                          
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => setSelectedSchedule(schedule)}
-                              draggable={showManagement && user?.role === 'coach'}
-                              onDragStart={() => handleDragStart(schedule)}
-                              onDragEnd={handleDragEnd}
-                              className={`text-xs p-1 rounded cursor-pointer truncate border ${getLevelColor(schedule.level)} hover:opacity-80 transition-opacity ${
-                                draggedSchedule?.id === schedule.id ? 'opacity-50' : ''
-                              } ${
-                                selectedScheduleIds.has(schedule.id) ? 'ring-1 ring-[#D91CD2]' : ''
-                              } ${
-                                showManagement && user?.role === 'coach' ? 'cursor-move' : ''
-                              }`}
-                            >
-                              {bulkMode && showManagement && user?.role === 'coach' && (
-                                <input
-                                  type="checkbox"
-                                  checked={selectedScheduleIds.has(schedule.id)}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    toggleScheduleSelection(schedule.id);
-                                  }}
-                                  className="w-2 h-2 sm:w-3 sm:h-3 mr-1 text-[#D91CD2] bg-black/60 border-gray-600 rounded"
-                                />
-                              )}
-                              <span className="hidden sm:inline">{formatTime(schedule.startTime)} </span>
-                              <span className="truncate">{course.title}</span>
-                            </div>
-                          );
-                        })}
-                        {daySchedules.length > (window.innerWidth < 640 ? 1 : 2) && (
-                          <div className="text-xs text-gray-400 font-medium">
-                            +{daySchedules.length - (window.innerWidth < 640 ? 1 : 2)} {t('more')}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* Timeline View for Week/Month and Week/Day views */
-            <div className="space-y-4">
-              {filteredSchedules.length > 0 ? (
-                filteredSchedules
-                  .sort((a, b) => {
-                    const dateA = a.startTime instanceof Date ? a.startTime : a.startTime.toDate();
-                    const dateB = b.startTime instanceof Date ? b.startTime : b.startTime.toDate();
-                    return dateA.getTime() - dateB.getTime();
-                  })
-                  .map((schedule) => {
-                    const course = getCourseById(schedule.courseId);
-                    if (!course) return null;
-
-                    return (
-                      <motion.div
-                        key={schedule.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-black/40 rounded-lg p-4 border border-gray-700/30 hover:border-[#D91CD2]/30 transition-colors cursor-pointer"
-                        onClick={() => setSelectedSchedule(schedule)}
+                        </motion.div>
+                      );
+                    })
+                ) : (
+                  <div className="bg-black/40 p-6 sm:p-8 rounded-lg text-center">
+                    <FiCalendar size={48} className="mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-400 mb-4">{t('noCoursesScheduled')}</p>
+                    {showManagement && user?.role === 'coach' && (
+                      <button
+                        onClick={() => {
+                          resetForm();
+                          setIsModalOpen(true);
+                        }}
+                        className="btn-primary w-full sm:w-auto"
                       >
-                        <div className="flex flex-col space-y-4 lg:flex-row lg:justify-between lg:items-center lg:space-y-0">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                              <h4 className="font-semibold text-base sm:text-lg truncate">{course.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs border ${getLevelColor(schedule.level)} self-start`}>
-                                {schedule.level}
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 text-sm">
-                              <div className="flex items-center text-gray-400">
-                                <FiCalendar className="mr-2 flex-shrink-0" />
-                                <span className="truncate">{formatDate(schedule.startTime)}</span>
-                              </div>
-                              <div className="flex items-center text-gray-400">
-                                <FiClock className="mr-2 flex-shrink-0" />
-                                <span className="truncate">{formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}</span>
-                              </div>
-                              {schedule.location && (
-                                <div className="flex items-center text-gray-400">
-                                  <FiMapPin className="mr-2 flex-shrink-0" />
-                                  <span className="truncate">{schedule.location}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center text-gray-400">
-                                <FiUsers className="mr-2 flex-shrink-0" />
-                                <span className="truncate">{course.currentStudents}/{course.maxStudents}</span>
-                              </div>
-                              <div className="flex items-center text-gray-400">
-                                <FiDollarSign className="mr-2 flex-shrink-0" />
-                                <span className="truncate">${course.price}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                            {onBookCourse && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onBookCourse(course.id);
-                                }}
-                                className="btn-primary text-sm px-4 py-2"
-                              >
-                                {t('bookNow')}
-                              </button>
-                            )}
-                            
-                            {showManagement && user?.role === 'coach' && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditSchedule(schedule);
-                                  }}
-                                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                                  title={t('editSchedule')}
-                                >
-                                  <FiEdit3 size={16} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSchedule(schedule.id);
-                                  }}
-                                  className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400"
-                                  title={t('deleteSchedule')}
-                                >
-                                  <FiTrash2 size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })
-              ) : (
-                <div className="bg-black/40 p-6 sm:p-8 rounded-lg text-center">
-                  <FiCalendar size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-400 mb-4">{t('noCoursesScheduled')}</p>
-                  {showManagement && user?.role === 'coach' && (
-                    <button
-                      onClick={() => {
-                        resetForm();
-                        setIsModalOpen(true);
-                      }}
-                      className="btn-primary w-full sm:w-auto"
-                    >
-                      {t('scheduleYourFirstCourse')}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                        {t('scheduleYourFirstCourse')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-    </div>
       </Card>
       {/* Schedule Detail Modal */}
       <AnimatePresence>
@@ -1412,7 +1398,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">{t('startTime')}</label>
                     <input
@@ -1593,9 +1579,9 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                 <FiAlertTriangle className="text-yellow-400" size={24} />
                 <h3 className="text-xl font-bold text-white">{t('confirmAction')}</h3>
               </div>
-              
+
               <p className="text-gray-300 mb-6">{confirmationModal.message}</p>
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmationModal({ ...confirmationModal, show: false })}
@@ -1605,14 +1591,13 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                 </button>
                 <button
                   onClick={confirmationModal.onConfirm}
-                  className={`flex-1 px-4 py-2 rounded-lg font-medium ${
-                    confirmationModal.type === 'delete'
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium ${confirmationModal.type === 'delete'
                       ? 'bg-red-500 hover:bg-red-600 text-white'
                       : 'bg-[#D91CD2] hover:bg-[#B91CA8] text-white'
-                  }`}
+                    }`}
                 >
-                  {confirmationModal.type === 'delete' ? t('delete') : 
-                   confirmationModal.type === 'move' ? t('move') : t('duplicate')}
+                  {confirmationModal.type === 'delete' ? t('delete') :
+                    confirmationModal.type === 'move' ? t('move') : t('duplicate')}
                 </button>
               </div>
             </motion.div>
@@ -1639,11 +1624,11 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                   <FiX size={24} />
                 </button>
               </div>
-              
+
               <p className="text-gray-300 mb-6">
                 {t('selectActionFor', { count: selectedScheduleIds.size })}
               </p>
-              
+
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">{t('targetDate')}</label>
@@ -1660,7 +1645,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-                
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {

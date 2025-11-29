@@ -27,12 +27,12 @@ const removeUndefinedFields = (obj: any): any => {
   if (Array.isArray(obj)) {
     return obj.map(item => removeUndefinedFields(item));
   }
-  
+
   // Handle null or non-objects
   if (obj === null || typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
     return obj;
   }
-  
+
   const cleaned: any = {};
   Object.keys(obj).forEach(key => {
     if (obj[key] !== undefined && obj[key] !== null) {
@@ -351,12 +351,12 @@ export const offerService = {
         collection(db, COACH_OFFERS_COLLECTION),
         where('coachId', '==', coachId)
       );
-      
+
       // If forceRefresh is true, wait a bit and use getDocsFromServer to bypass cache
       if (forceRefresh) {
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second for Firestore to process
       }
-      
+
       let snapshot;
       try {
         // Use getDocsFromServer to bypass cache when forceRefresh is true
@@ -372,7 +372,7 @@ export const offerService = {
         console.warn('Server fetch failed, using cache:', serverError);
         snapshot = await getDocs(qCoach);
       }
-      
+
       const offers = snapshot.docs.map(mapOfferSnapshot);
       if (!offers.length) {
         return buildDefaultOffers(coachId);
@@ -415,17 +415,32 @@ export const offerService = {
     }
   },
 
+  async create(offerData: any) {
+    const payload = removeUndefinedFields({
+      ...offerData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true, // Default to active
+      options: [], // Default empty options
+      paymentMethods: ['credit_card', 'twint'], // Default payment methods
+      highlightItems: []
+    });
+
+    // Use addDoc to let Firestore generate the ID
+    await addDoc(collection(db, COACH_OFFERS_COLLECTION), payload);
+  },
+
   async update(id: string, data: Partial<Offer>) {
     // Ensure all fields are properly saved, including nested options
     const updateData = removeUndefinedFields({
       ...data,
       updatedAt: new Date()
     });
-    
+
     console.log('Updating offer:', id, 'with data:', updateData);
-    
+
     await updateDoc(doc(db, COACH_OFFERS_COLLECTION, id), updateData);
-    
+
     console.log('Offer updated successfully:', id);
   },
 
@@ -434,6 +449,10 @@ export const offerService = {
       isActive,
       updatedAt: new Date()
     }));
+  },
+
+  async delete(id: string) {
+    await deleteDoc(doc(db, COACH_OFFERS_COLLECTION, id));
   }
 };
 

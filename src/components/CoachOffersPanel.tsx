@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FiGift, FiLayers, FiSave } from 'react-icons/fi';
+import { FiGift, FiLayers, FiSave, FiPlus, FiTrash2 } from 'react-icons/fi';
 import Card from './Card';
 import { useAuth } from '@/lib/auth';
 import { offerService, MAIN_OFFERS_COACH_ID, MAIN_OFFERS_COACH_NAME } from '@/lib/database';
@@ -20,6 +20,16 @@ const CoachOffersPanel = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [savingOfferId, setSavingOfferId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newOffer, setNewOffer] = useState<Partial<Offer>>({
+    title: '',
+    subtitle: '',
+    description: '',
+    price: 0,
+    buttonLabel: 'Select',
+    emoji: '✨',
+    sortOrder: 0
+  });
 
   const sortedOffers = useMemo(
     () => [...offers].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -62,9 +72,9 @@ const CoachOffersPanel = () => {
       prev.map(offer =>
         offer.id === offerId
           ? {
-              ...offer,
-              [field]: field === 'price' ? Number(value) || 0 : value
-            }
+            ...offer,
+            [field]: field === 'price' ? Number(value) || 0 : value
+          }
           : offer
       )
     );
@@ -75,9 +85,9 @@ const CoachOffersPanel = () => {
       prev.map(offer =>
         offer.id === offerId
           ? {
-              ...offer,
-              isActive: value
-            }
+            ...offer,
+            isActive: value
+          }
           : offer
       )
     );
@@ -90,9 +100,9 @@ const CoachOffersPanel = () => {
         const updated = offer.options.map(option =>
           option.id === optionId
             ? {
-                ...option,
-                [field]: field === 'price' ? Number(value) || 0 : value
-              }
+              ...option,
+              [field]: field === 'price' ? Number(value) || 0 : value
+            }
             : option
         );
         return { ...offer, options: updated };
@@ -121,10 +131,10 @@ const CoachOffersPanel = () => {
     try {
       setSavingOfferId(offerId);
       setFeedback(null);
-      
+
       // Prepare payload - exclude only the fields that shouldn't be updated
       const { id, createdAt, updatedAt, ...payload } = target;
-      
+
       // Ensure all fields are included, especially nested options
       const updatePayload: Partial<Offer> = {
         ...payload,
@@ -146,14 +156,14 @@ const CoachOffersPanel = () => {
         coachName: target.coachName,
         slug: target.slug
       };
-      
+
       console.log('Saving offer:', offerId, 'with payload:', updatePayload);
-      
+
       await offerService.update(offerId, updatePayload);
-      
+
       // Wait a bit before reloading to ensure Firestore has processed the update
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Force refresh to bypass cache and get fresh data from Firestore
       await loadOffers(true);
       setFeedback({
@@ -168,6 +178,73 @@ const CoachOffersPanel = () => {
       });
     } finally {
       setSavingOfferId(null);
+    }
+  };
+
+  const handleCreateOffer = async () => {
+    try {
+      setIsLoading(true);
+
+      // Use MAIN_OFFERS_COACH_ID to ensure it appears in the public popup
+      const offerData = {
+        ...newOffer,
+        coachId: MAIN_OFFERS_COACH_ID,
+        coachName: MAIN_OFFERS_COACH_NAME,
+        slug: newOffer.title?.toLowerCase().replace(/\s+/g, '-') || 'new-offer',
+        isActive: true,
+        currency: 'CHF'
+      };
+
+      await offerService.create(offerData);
+
+      setShowCreateModal(false);
+      setNewOffer({
+        title: '',
+        subtitle: '',
+        description: '',
+        price: 0,
+        buttonLabel: 'Select',
+        emoji: '✨',
+        sortOrder: 0
+      });
+
+      // Refresh offers
+      await loadOffers(true);
+
+      setFeedback({
+        type: 'success',
+        message: t('Offer created successfully')
+      });
+    } catch (error) {
+      console.error('Failed to create offer', error);
+      setFeedback({
+        type: 'error',
+        message: t('Failed to create offer')
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteOffer = async (offerId: string) => {
+    if (!confirm(t('Are you sure you want to delete this offer?'))) return;
+
+    try {
+      setIsLoading(true);
+      await offerService.delete(offerId);
+      await loadOffers(true);
+      setFeedback({
+        type: 'success',
+        message: t('Offer deleted successfully')
+      });
+    } catch (error) {
+      console.error('Failed to delete offer', error);
+      setFeedback({
+        type: 'error',
+        message: t('Failed to delete offer')
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -195,27 +272,35 @@ const CoachOffersPanel = () => {
   return (
     <div className="space-y-6">
       <Card>
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-full bg-[#D91CD2]/10 text-[#D91CD2]">
-            <FiGift size={20} />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 rounded-full bg-[#D91CD2]/10 text-[#D91CD2]">
+              <FiGift size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">{t('Offer Management')}</h2>
+              <p className="text-sm text-gray-400">
+                {t('offerManagementSubtitle') ||
+                  'Customize the offers displayed inside the Ready to Dance popup.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold">{t('Offer Management')}</h2>
-            <p className="text-sm text-gray-400">
-              {t('offerManagementSubtitle') ||
-                'Customize the offers displayed inside the Ready to Dance popup.'}
-            </p>
-          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center justify-center px-4 py-2"
+          >
+            <FiPlus className="mr-2" />
+            {t('Create Offer')}
+          </button>
         </div>
       </Card>
 
       {feedback && (
         <div
-          className={`p-4 rounded-lg ${
-            feedback.type === 'success'
-              ? 'bg-green-500/10 text-green-400 border border-green-500/30'
-              : 'bg-red-500/10 text-red-400 border border-red-500/30'
-          }`}
+          className={`p-4 rounded-lg ${feedback.type === 'success'
+            ? 'bg-green-500/10 text-green-400 border border-green-500/30'
+            : 'bg-red-500/10 text-red-400 border border-red-500/30'
+            }`}
         >
           {feedback.message}
         </div>
@@ -247,6 +332,13 @@ const CoachOffersPanel = () => {
               />
               <span>{t('Offer active')}</span>
             </label>
+            <button
+              onClick={() => handleDeleteOffer(offer.id)}
+              className="text-red-400 hover:text-red-300 p-2"
+              title={t('Delete Offer')}
+            >
+              <FiTrash2 size={18} />
+            </button>
           </div>
 
           <div className="grid gap-4">
@@ -382,6 +474,108 @@ const CoachOffersPanel = () => {
           </div>
         </Card>
       ))}
+
+      {/* Create Offer Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="bg-[#1a1a1a] rounded-xl max-w-lg w-full p-6 border border-gray-800 shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">{t('Create New Offer')}</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{t('Title')}</label>
+                <input
+                  type="text"
+                  value={newOffer.title}
+                  onChange={(e) => setNewOffer({ ...newOffer, title: e.target.value })}
+                  className="input-primary w-full"
+                  placeholder={t('e.g. Starter Pack')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{t('Subtitle')}</label>
+                <input
+                  type="text"
+                  value={newOffer.subtitle}
+                  onChange={(e) => setNewOffer({ ...newOffer, subtitle: e.target.value })}
+                  className="input-primary w-full"
+                  placeholder={t('e.g. Perfect for beginners')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{t('Description')}</label>
+                <textarea
+                  value={newOffer.description}
+                  onChange={(e) => setNewOffer({ ...newOffer, description: e.target.value })}
+                  className="input-primary w-full min-h-[80px]"
+                  placeholder={t('Describe what is included...')}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{t('Price (CHF)')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newOffer.price}
+                    onChange={(e) => setNewOffer({ ...newOffer, price: Number(e.target.value) })}
+                    className="input-primary w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{t('Sort Order')}</label>
+                  <input
+                    type="number"
+                    value={newOffer.sortOrder}
+                    onChange={(e) => setNewOffer({ ...newOffer, sortOrder: Number(e.target.value) })}
+                    className="input-primary w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{t('Button Label')}</label>
+                  <input
+                    type="text"
+                    value={newOffer.buttonLabel}
+                    onChange={(e) => setNewOffer({ ...newOffer, buttonLabel: e.target.value })}
+                    className="input-primary w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">{t('Emoji')}</label>
+                  <input
+                    type="text"
+                    value={newOffer.emoji}
+                    onChange={(e) => setNewOffer({ ...newOffer, emoji: e.target.value })}
+                    className="input-primary w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors"
+              >
+                {t('Cancel')}
+              </button>
+              <button
+                onClick={handleCreateOffer}
+                disabled={!newOffer.title || !newOffer.description}
+                className="btn-primary px-4 py-2"
+              >
+                {t('Create')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

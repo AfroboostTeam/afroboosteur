@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiPlus, 
-  FiEdit3, 
-  FiTrash2, 
-  FiDownload, 
+import {
+  FiPlus,
+  FiEdit3,
+  FiTrash2,
+  FiDownload,
   FiShare2,
   FiEye,
   FiCalendar,
@@ -34,14 +34,14 @@ interface GiftCardManagementProps {
 export default function GiftCardManagement({ className = '', userType }: GiftCardManagementProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  
+
   const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
   const [transactions, setTransactions] = useState<GiftCardTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState<GiftCard | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Form state
   const [cardForm, setCardForm] = useState({
     amount: '',
@@ -50,7 +50,9 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
     expirationMethod: 'preset' as 'preset' | 'custom',
     customExpirationDate: '',
     customTimeUnit: 'days' as 'hours' | 'days' | 'weeks' | 'months',
-    customTimeValue: '1'
+    customTimeValue: '1',
+    sendViaEmail: false,
+    recipientEmail: ''
   });
 
   const [generatingQR, setGeneratingQR] = useState(false);
@@ -71,7 +73,7 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
 
   const loadGiftCards = async () => {
     if (!user) return;
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/gift-cards?issuerId=${user.id}&issuerType=${userType}`);
@@ -88,7 +90,7 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
 
   const loadTransactions = async () => {
     if (!user) return;
-    
+
     try {
       const response = await fetch(`/api/gift-cards/transactions?issuerId=${user.id}`);
       if (response.ok) {
@@ -131,10 +133,10 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
     try {
       const cardCode = generateCardCode();
       const qrCodeImage = await generateQRCode(cardCode);
-      
+
       // Calculate expiration date based on method
       let expirationDate = new Date();
-      
+
       if (cardForm.expirationMethod === 'custom') {
         if (cardForm.customExpirationDate) {
           // Use exact date
@@ -185,14 +187,16 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
       if (response.ok) {
         await loadGiftCards();
         setShowCreateModal(false);
-        setCardForm({ 
-          amount: '', 
-          description: '', 
+        setCardForm({
+          amount: '',
+          description: '',
           expirationDays: '365',
           expirationMethod: 'preset',
           customExpirationDate: '',
           customTimeUnit: 'days',
-          customTimeValue: '1'
+          customTimeValue: '1',
+          sendViaEmail: false,
+          recipientEmail: ''
         });
       }
     } catch (error) {
@@ -296,40 +300,40 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
     qrImg.onload = () => {
       // QR code positioned in bottom left
       ctx.drawImage(qrImg, 25, 200, 100, 100);
-      
+
       // Card details on the right side with better layout
       ctx.fillStyle = '#ffffff';
       ctx.font = '16px Arial, sans-serif';
       ctx.textAlign = 'left';
-      
+
       let yPos = 130;
       const leftMargin = 25; // Moved further left to give more space
       const rightMargin = 40; // Reduced right margin
       const maxWidth = canvas.width - rightMargin - leftMargin;
-      
+
       // Card code with localized label and text wrapping
       ctx.font = 'bold 16px Arial, sans-serif'; // Slightly smaller font
       const codeText = `${t('Code')}: ${card.cardCode}`;
       const codeMetrics = ctx.measureText(codeText);
-      
+
       // If code text is too long, wrap it to multiple lines
       if (codeMetrics.width > maxWidth) {
         const codeLabel = `${t('Code')}:`;
         ctx.fillText(codeLabel, leftMargin, yPos);
         yPos += 20;
-        
+
         // Split the card code if it's still too long
         const code = card.cardCode;
         const codeFont = '14px Arial, sans-serif';
         ctx.font = codeFont;
-        
+
         let codeLine = '';
         let codeChars = code.split('');
-        
+
         for (let i = 0; i < codeChars.length; i++) {
           const testLine = codeLine + codeChars[i];
           const testMetrics = ctx.measureText(testLine);
-          
+
           if (testMetrics.width > maxWidth && codeLine !== '') {
             ctx.fillText(codeLine, leftMargin, yPos);
             codeLine = codeChars[i];
@@ -338,7 +342,7 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
             codeLine = testLine;
           }
         }
-        
+
         if (codeLine) {
           ctx.fillText(codeLine, leftMargin, yPos);
           yPos += 25;
@@ -347,14 +351,14 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
         ctx.fillText(codeText, leftMargin, yPos);
         yPos += 30;
       }
-      
+
       // Description with proper text wrapping
       if (card.description && card.description.trim()) {
         ctx.font = '14px Arial, sans-serif';
         const words = card.description.split(' ');
         let line = '';
         let lineHeight = 18;
-        
+
         for (let word of words) {
           const testLine = line + word + ' ';
           const metrics = ctx.measureText(testLine);
@@ -373,14 +377,14 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
           yPos += 25;
         }
       }
-      
+
       // Expiration date with localized label
       ctx.font = '14px Arial, sans-serif';
       if (yPos <= 190) {
         ctx.fillText(`${t('Expires')}: ${formatDate(card.expirationDate)}`, leftMargin, yPos);
         yPos += 20;
       }
-      
+
       // Status with localized text
       if (yPos <= 190) {
         if (card.isUsed) {
@@ -395,19 +399,19 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
           ctx.fillText(`${t('Status')}: ${t('Active & Ready to Use')}`, leftMargin, yPos);
         }
       }
-      
+
       // QR Code label with localized text
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(t('Scan QR Code'), 75, 315);
-      
+
       // Footer with site branding
       ctx.fillStyle = '#ffffff';
       ctx.font = '12px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('AfroBoost - Dance Your Way to Success', canvas.width / 2, canvas.height - 15);
-      
+
       // Download the complete card
       canvas.toBlob((blob) => {
         if (blob) {
@@ -433,9 +437,9 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
 
         await navigator.share({
           title: t('Gift Card'),
-          text: t('Here is your gift card worth {{amount}} {{currency}}', { 
-            amount: card.amount, 
-            currency: card.currency 
+          text: t('Here is your gift card worth {{amount}} {{currency}}', {
+            amount: card.amount,
+            currency: card.currency
           }),
           files: [file]
         });
@@ -575,11 +579,10 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
           <button
             key={filter.value}
             onClick={() => setStatusFilter(filter.value)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              statusFilter === filter.value
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === filter.value
+              ? 'bg-purple-600 text-white'
+              : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
           >
             {filter.label}
           </button>
@@ -610,144 +613,9 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                     </span>
                   </div>
 
-                {/* QR Code */}
-                <div className="text-center mb-4">
-                  <div className="w-32 h-32 mx-auto mb-3 bg-white rounded-lg p-2 flex items-center justify-center">
-                    <Image
-                      src={card.qrCodeImage}
-                      alt={`QR Code for ${card.cardCode}`}
-                      width={120}
-                      height={120}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <p className="text-gray-400 text-sm font-mono">{card.cardCode}</p>
-                </div>
-
-                {/* Card Details */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">{t('Amount')}:</span>
-                    <span className="text-xl font-bold text-purple-400">
-                      {card.amount} {card.currency}
-                    </span>
-                  </div>
-
-                  {card.isUsed && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-sm">{t('Remaining')}:</span>
-                      <span className="text-lg font-semibold text-green-400">
-                        {card.remainingAmount} {card.currency}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400 text-sm">{t('Expires')}:</span>
-                    <span className="text-white text-sm">{formatDate(card.expirationDate)}</span>
-                  </div>
-
-                  {card.description && (
-                    <div>
-                      <span className="text-gray-400 text-sm">{t('Description')}:</span>
-                      <p className="text-white text-sm mt-1 break-words overflow-hidden leading-relaxed">
-                        {card.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {card.isUsed && (
-                    <div className="pt-3 border-t border-gray-700 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <span className="text-gray-400 text-sm flex-shrink-0">{t('Used by')}:</span>
-                        <span className="text-white text-sm text-right break-words ml-2 min-w-0">{card.usedByName || 'Unknown'}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-sm">{t('Used on')}:</span>
-                        <span className="text-white text-sm">{formatDate(card.usedAt)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-700 space-y-3 sm:space-y-0">
-                  <div className="flex items-center justify-center sm:justify-start space-x-2">
-                    <button
-                      onClick={() => downloadQRCode(card)}
-                      className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
-                      title={t('Download QR Code')}
-                    >
-                      <FiDownload size={18} />
-                    </button>
-                    <button
-                      onClick={() => shareQRCode(card)}
-                      className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
-                      title={t('Share QR Code')}
-                    >
-                      <FiShare2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => downloadCompleteCard(card)}
-                      className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
-                      title={t('Download Complete Card')}
-                    >
-                      <FiCreditCard size={18} />
-                    </button>
-                    <button
-                      onClick={() => copyCardCode(card.cardCode)}
-                      className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
-                      title={t('Copy Code')}
-                    >
-                      <FiCopy size={18} />
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-center sm:justify-end space-x-2">
-                    {card.isActive && !card.isUsed && (
-                      <button
-                        onClick={() => handleDeactivateCard(card.id)}
-                        className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
-                        title={t('Deactivate')}
-                      >
-                        <FiX size={18} />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                      title={t('Delete Permanently')}
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Mobile: Horizontal Scrolling */}
-        <div className="md:hidden">
-          <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
-            {filteredCards.map((card) => (
-              <motion.div
-                key={`mobile-${card.id}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex-shrink-0 w-80"
-              >
-                <Card className="p-6 relative h-full">
-                  {/* Status Badge */}
-                  <div className="absolute top-4 right-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(card)}`}>
-                      {getStatusText(card)}
-                    </span>
-                  </div>
-
                   {/* QR Code */}
-                  <div className="text-center mb-6">
-                    <div className="w-32 h-32 bg-white rounded-lg mx-auto mb-3 p-2">
+                  <div className="text-center mb-4">
+                    <div className="w-32 h-32 mx-auto mb-3 bg-white rounded-lg p-2 flex items-center justify-center">
                       <Image
                         src={card.qrCodeImage}
                         alt={`QR Code for ${card.cardCode}`}
@@ -785,15 +653,17 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                     {card.description && (
                       <div>
                         <span className="text-gray-400 text-sm">{t('Description')}:</span>
-                        <p className="text-white text-sm mt-1">{card.description}</p>
+                        <p className="text-white text-sm mt-1 break-words overflow-hidden leading-relaxed">
+                          {card.description}
+                        </p>
                       </div>
                     )}
 
                     {card.isUsed && (
                       <div className="pt-3 border-t border-gray-700 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-400 text-sm">{t('Used by')}:</span>
-                          <span className="text-white text-sm">{card.usedByName || 'Unknown'}</span>
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-400 text-sm flex-shrink-0">{t('Used by')}:</span>
+                          <span className="text-white text-sm text-right break-words ml-2 min-w-0">{card.usedByName || 'Unknown'}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-gray-400 text-sm">{t('Used on')}:</span>
@@ -804,64 +674,197 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                   </div>
 
                   {/* Actions */}
-                    <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-4 border-t border-gray-700">
-                    <button
-                      onClick={() => downloadQRCode(card)}
-                      className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
-                      title={t('Download QR Code Only')}
-                    >
-                      <FiDownload size={18} />
-                    </button>
-                    <button
-                      onClick={() => downloadCompleteCard(card)}
-                      className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
-                      title={t('Download Complete Card')}
-                    >
-                      <FiCreditCard size={18} />
-                    </button>
-                    <button
-                      onClick={() => shareQRCode(card)}
-                      className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
-                      title={t('Share QR Code')}
-                    >
-                      <FiShare2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => copyCardCode(card.cardCode)}
-                      className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
-                      title={t('Copy Code')}
-                    >
-                      <FiCopy size={18} />
-                    </button>
-                    {card.isActive && !card.isUsed && (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-700 space-y-3 sm:space-y-0">
+                    <div className="flex items-center justify-center sm:justify-start space-x-2">
                       <button
-                      onClick={() => handleDeactivateCard(card.id)}
-                      className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
-                      title={t('Deactivate')}
+                        onClick={() => downloadQRCode(card)}
+                        className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
+                        title={t('Download QR Code')}
                       >
-                      <FiX size={18} />
+                        <FiDownload size={18} />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                      title={t('Delete Permanently')}
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
+                      <button
+                        onClick={() => shareQRCode(card)}
+                        className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
+                        title={t('Share QR Code')}
+                      >
+                        <FiShare2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => downloadCompleteCard(card)}
+                        className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
+                        title={t('Download Complete Card')}
+                      >
+                        <FiCreditCard size={18} />
+                      </button>
+                      <button
+                        onClick={() => copyCardCode(card.cardCode)}
+                        className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
+                        title={t('Copy Code')}
+                      >
+                        <FiCopy size={18} />
+                      </button>
                     </div>
+
+                    <div className="flex items-center justify-center sm:justify-end space-x-2">
+                      {card.isActive && !card.isUsed && (
+                        <button
+                          onClick={() => handleDeactivateCard(card.id)}
+                          className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
+                          title={t('Deactivate')}
+                        >
+                          <FiX size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                        title={t('Delete Permanently')}
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
                 </Card>
               </motion.div>
             ))}
           </div>
-          
-          {/* Mobile scroll hint */}
-          {filteredCards.length > 1 && (
-            <div className="text-center mt-2">
-              <p className="text-xs text-gray-500">{t('Swipe left to see more cards')}</p>
+
+          {/* Mobile: Horizontal Scrolling */}
+          <div className="md:hidden">
+            <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
+              {filteredCards.map((card) => (
+                <motion.div
+                  key={`mobile-${card.id}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex-shrink-0 w-80"
+                >
+                  <Card className="p-6 relative h-full">
+                    {/* Status Badge */}
+                    <div className="absolute top-4 right-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(card)}`}>
+                        {getStatusText(card)}
+                      </span>
+                    </div>
+
+                    {/* QR Code */}
+                    <div className="text-center mb-6">
+                      <div className="w-32 h-32 bg-white rounded-lg mx-auto mb-3 p-2">
+                        <Image
+                          src={card.qrCodeImage}
+                          alt={`QR Code for ${card.cardCode}`}
+                          width={120}
+                          height={120}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <p className="text-gray-400 text-sm font-mono">{card.cardCode}</p>
+                    </div>
+
+                    {/* Card Details */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-sm">{t('Amount')}:</span>
+                        <span className="text-xl font-bold text-purple-400">
+                          {card.amount} {card.currency}
+                        </span>
+                      </div>
+
+                      {card.isUsed && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400 text-sm">{t('Remaining')}:</span>
+                          <span className="text-lg font-semibold text-green-400">
+                            {card.remainingAmount} {card.currency}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-sm">{t('Expires')}:</span>
+                        <span className="text-white text-sm">{formatDate(card.expirationDate)}</span>
+                      </div>
+
+                      {card.description && (
+                        <div>
+                          <span className="text-gray-400 text-sm">{t('Description')}:</span>
+                          <p className="text-white text-sm mt-1">{card.description}</p>
+                        </div>
+                      )}
+
+                      {card.isUsed && (
+                        <div className="pt-3 border-t border-gray-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-sm">{t('Used by')}:</span>
+                            <span className="text-white text-sm">{card.usedByName || 'Unknown'}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-sm">{t('Used on')}:</span>
+                            <span className="text-white text-sm">{formatDate(card.usedAt)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-4 border-t border-gray-700">
+                      <button
+                        onClick={() => downloadQRCode(card)}
+                        className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
+                        title={t('Download QR Code Only')}
+                      >
+                        <FiDownload size={18} />
+                      </button>
+                      <button
+                        onClick={() => downloadCompleteCard(card)}
+                        className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
+                        title={t('Download Complete Card')}
+                      >
+                        <FiCreditCard size={18} />
+                      </button>
+                      <button
+                        onClick={() => shareQRCode(card)}
+                        className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
+                        title={t('Share QR Code')}
+                      >
+                        <FiShare2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => copyCardCode(card.cardCode)}
+                        className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
+                        title={t('Copy Code')}
+                      >
+                        <FiCopy size={18} />
+                      </button>
+                      {card.isActive && !card.isUsed && (
+                        <button
+                          onClick={() => handleDeactivateCard(card.id)}
+                          className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
+                          title={t('Deactivate')}
+                        >
+                          <FiX size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                        title={t('Delete Permanently')}
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Mobile scroll hint */}
+            {filteredCards.length > 1 && (
+              <div className="text-center mt-2">
+                <p className="text-xs text-gray-500">{t('Swipe left to see more cards')}</p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="text-center py-16">
@@ -870,7 +873,7 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
             {statusFilter === 'all' ? t('No gift cards yet') : t('No gift cards with this status')}
           </h3>
           <p className="text-gray-400 mb-6">
-            {statusFilter === 'all' 
+            {statusFilter === 'all'
               ? t('Create your first gift card to start selling gift cards to your customers.')
               : t('Try selecting a different status filter.')
             }
@@ -892,7 +895,7 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-gray-900 rounded-lg max-w-md w-full"
+            className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto"
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
@@ -905,7 +908,49 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                 </button>
               </div>
 
+              {/* Tabs */}
+              <div className="flex space-x-2 mb-6 border-b border-gray-700">
+                <button
+                  onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: false, recipientEmail: '' }))}
+                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${!cardForm.sendViaEmail
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                >
+                  {t('Create Card')}
+                </button>
+                <button
+                  onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: true }))}
+                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${cardForm.sendViaEmail
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                >
+                  {t('Create & Send via Email')}
+                </button>
+              </div>
+
               <div className="space-y-4">
+                {/* Email field - only shown in second tab */}
+                {cardForm.sendViaEmail && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {t('Recipient Email')} *
+                    </label>
+                    <input
+                      type="email"
+                      value={cardForm.recipientEmail || ''}
+                      onChange={(e) => setCardForm(prev => ({ ...prev, recipientEmail: e.target.value }))}
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="recipient@example.com"
+                      required={cardForm.sendViaEmail}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {t('The gift card will be sent to this email address')}
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     {t('Amount')} (CHF) *
@@ -938,7 +983,7 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     {t('Expiration Settings')} *
                   </label>
-                  
+
                   {/* Expiration Method Selection */}
                   <div className="flex space-x-4 mb-4">
                     <label className="flex items-center">
@@ -1043,7 +1088,7 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                 </button>
                 <button
                   onClick={handleCreateCard}
-                  disabled={!cardForm.amount || generatingQR}
+                  disabled={!cardForm.amount || generatingQR || (cardForm.sendViaEmail && !cardForm.recipientEmail)}
                   className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   {generatingQR ? (
@@ -1054,7 +1099,7 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                   ) : (
                     <>
                       <FiCode size={18} />
-                      <span>{t('Create')}</span>
+                      <span>{cardForm.sendViaEmail ? t('Create & Send') : t('Create')}</span>
                     </>
                   )}
                 </button>

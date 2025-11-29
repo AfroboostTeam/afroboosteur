@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  FiUpload, 
+import {
+  FiUpload,
   FiX,
   FiCheckCircle,
   FiAlertCircle,
@@ -17,17 +17,17 @@ import Image from 'next/image';
 import jsQR from 'jsqr';
 
 interface DiscountCardScannerProps {
-  onValidation: (result: { 
-    valid: boolean; 
-    discountPercentage: number; 
-    cardCode: string; 
+  onValidation: (result: {
+    valid: boolean;
+    discountPercentage: number;
+    cardCode: string;
     memberName: string;
     coachId: string;
     expirationDate: string;
     description: string;
     discountAmount?: number;
     finalAmount?: number;
-    error?: string 
+    error?: string
   }) => void;
   onClose: () => void;
   customerId: string;
@@ -36,10 +36,10 @@ interface DiscountCardScannerProps {
   orderAmount: number;
 }
 
-export default function DiscountCardScanner({ 
-  onValidation, 
-  onClose, 
-  customerId, 
+export default function DiscountCardScanner({
+  onValidation,
+  onClose,
+  customerId,
   customerName,
   coachId,
   orderAmount
@@ -115,7 +115,7 @@ export default function DiscountCardScanner({
   const startCamera = useCallback(async () => {
     console.log('📹 Discount Card - Starting camera...');
     setCameraError('');
-    
+
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera not supported in this browser');
@@ -127,7 +127,7 @@ export default function DiscountCardScanner({
       }
 
       const constraints = {
-        video: { 
+        video: {
           facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
@@ -180,11 +180,11 @@ export default function DiscountCardScanner({
 
   const stopCamera = useCallback(() => {
     console.log('📹 Discount Card - Stopping camera...');
-    
+
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
         track.stop();
@@ -192,11 +192,11 @@ export default function DiscountCardScanner({
       });
       streamRef.current = null;
     }
-    
+
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    
+
     setIsCameraActive(false);
     setCameraError('');
     setDetectedCode('');
@@ -204,7 +204,7 @@ export default function DiscountCardScanner({
 
   const startQRScanning = useCallback(() => {
     console.log('📹 Discount Card - Starting QR scanning...');
-    
+
     if (!videoRef.current || !canvasRef.current) {
       console.log('📹 Discount Card - Missing refs:', {
         hasVideo: !!videoRef.current,
@@ -224,10 +224,10 @@ export default function DiscountCardScanner({
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
-        
+
         if (qrCode) {
           console.log('📹 Discount Card - QR Code detected:', qrCode.data);
           setDetectedCode(qrCode.data);
@@ -235,7 +235,7 @@ export default function DiscountCardScanner({
           return;
         }
       }
-      
+
       animationFrameRef.current = requestAnimationFrame(scanFrame);
     };
 
@@ -264,7 +264,7 @@ export default function DiscountCardScanner({
         canvas.width = img.width;
         canvas.height = img.height;
         ctx?.drawImage(img, 0, 0);
-        
+
         const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
         if (imageData) {
           const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
@@ -305,7 +305,7 @@ export default function DiscountCardScanner({
 
   const handleValidateDiscountCard = async (code: string) => {
     setIsValidating(true);
-    
+
     try {
       const response = await fetch('/api/discount-cards/validate', {
         method: 'POST',
@@ -413,14 +413,14 @@ export default function DiscountCardScanner({
               <span className="text-gray-400">{t('Order Amount')}:</span>
               <span className="text-white font-medium">{orderAmount} CHF</span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-2">
+            <div className="flex items-start justify-between text-xs sm:text-sm mt-2">
               <span className="text-gray-400">{t('Customer')}:</span>
               <span className="text-white">{customerName}</span>
             </div>
             {coachId && (
-              <div className="flex items-center space-x-2 text-sm mt-2">
+              <div className="flex items-start space-x-2 text-xs sm:text-sm mt-2">
                 <FiAlertCircle className="text-yellow-400" size={16} />
-                <span className="text-yellow-300">
+                <span className="text-yellow-300 break-words leading-snug pr-1">
                   {t('Only discount cards from this coach will be accepted')}
                 </span>
               </div>
@@ -474,18 +474,17 @@ export default function DiscountCardScanner({
           )}
 
           {/* Method Selection */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="flex flex-col sm:grid sm:grid-cols-3 gap-2 mb-6">
             <button
               onClick={() => {
                 stopCamera();
                 setUseManualEntry(false);
                 setUseCameraScanner(false);
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                !useManualEntry && !useCameraScanner
+              className={`py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${!useManualEntry && !useCameraScanner
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
+                }`}
             >
               {t('Upload Image')}
             </button>
@@ -497,11 +496,10 @@ export default function DiscountCardScanner({
                 setUseCameraScanner(true);
                 await startCamera();
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                useCameraScanner
+              className={`py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${useCameraScanner
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
+                }`}
             >
               <FiCamera className="inline mr-1" size={14} />
               {t('Scan QR')}
@@ -512,11 +510,10 @@ export default function DiscountCardScanner({
                 setUseManualEntry(true);
                 setUseCameraScanner(false);
               }}
-              className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                useManualEntry
+              className={`py-3 px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${useManualEntry
                   ? 'bg-purple-600 text-white'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
+                }`}
             >
               {t('Manual Entry')}
             </button>
@@ -535,13 +532,13 @@ export default function DiscountCardScanner({
                   autoPlay
                 />
                 <canvas ref={canvasRef} className="hidden" />
-                
+
                 {/* Camera overlay */}
                 <div className="absolute inset-0 border-2 border-purple-500/30 rounded-lg">
                   <div className="absolute top-4 left-4 right-4">
                     <div className="bg-black/70 rounded-lg p-3 text-center">
                       <p className="text-white text-sm">
-                        {isCameraActive 
+                        {isCameraActive
                           ? t('Point camera at discount card QR code')
                           : t('Starting camera...')
                         }
@@ -553,7 +550,7 @@ export default function DiscountCardScanner({
                       )}
                     </div>
                   </div>
-                  
+
                   {/* QR code target */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-48 h-48 border-2 border-purple-400 rounded-lg">

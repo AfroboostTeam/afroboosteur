@@ -64,6 +64,7 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState<DiscountCard | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'used'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadDiscountCards();
@@ -514,6 +515,20 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
         const usageCount = typeof card.usageCount === 'number' ? card.usageCount : 0;
         const usageLimit = typeof card.usageLimit === 'number' ? card.usageLimit : null;
         const isUsedUp = usageLimit ? usageCount >= usageLimit : false;
+        const lowerSearch = searchTerm.trim().toLowerCase();
+
+        if (lowerSearch) {
+          const name = (card.memberName || '').toLowerCase();
+          const email = (card.memberEmail || '').toLowerCase();
+          const code = (card.code || '').toLowerCase();
+          const courseName = (card.courseName || '').toLowerCase();
+          const matchesSearch =
+            name.includes(lowerSearch) ||
+            email.includes(lowerSearch) ||
+            code.includes(lowerSearch) ||
+            courseName.includes(lowerSearch);
+          if (!matchesSearch) return false;
+        }
         
         switch (filter) {
           case 'active':
@@ -653,8 +668,24 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
         </motion.div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex space-x-1 bg-gray-800 rounded-lg p-1">
+      {/* Search + Filter */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        {/* Search */}
+        <div className="w-full md:w-1/2">
+          <div className="relative">
+            <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('Search by name, email or code') || 'Search by name, email or code'}
+              className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            />
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex space-x-1 bg-gray-800 rounded-lg p-1">
         {[
           { key: 'all', label: t('All Cards') },
           { key: 'active', label: t('Active') },
@@ -673,6 +704,7 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
             {tab.label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Cards List */}
@@ -699,7 +731,7 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
         </div>
       ) : (
         /* Unified Grid Layout for All Screen Sizes */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[600px] overflow-y-auto pr-1">
           {getFilteredCards().map((card) => {
             const status = getCardStatus(card);
             return (

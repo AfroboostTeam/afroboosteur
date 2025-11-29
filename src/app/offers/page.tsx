@@ -378,8 +378,8 @@ export default function OffersPage() {
                           <span>{offer.emoji}</span>
                           <span>{t('Offer')}</span>
                         </p>
-                        <h3 className="text-xl font-semibold text-white">{offer.title}</h3>
-                        {offer.subtitle && <p className="text-gray-400 text-sm mt-1">{offer.subtitle}</p>}
+                        <h3 className="text-xl font-semibold text-white">{t(offer.title) || offer.title}</h3>
+                        {offer.subtitle && <p className="text-gray-400 text-sm mt-1">{t(offer.subtitle) || offer.subtitle}</p>}
                       </div>
                       <div className="text-right ml-4">
                         <span className="text-xs text-gray-400">{t('Starting at')}</span>
@@ -387,13 +387,13 @@ export default function OffersPage() {
                       </div>
                     </div>
 
-                    <p className="text-gray-300 text-sm leading-relaxed">{offer.description}</p>
+                    <p className="text-gray-300 text-sm leading-relaxed">{t(offer.description) || offer.description}</p>
 
                     {offer.highlightItems?.length ? (
                       <div className="flex flex-wrap gap-1.5">
                         {offer.highlightItems.map(item => (
                           <span key={item} className="text-xs bg-[#D91CD2]/10 text-[#D91CD2] px-2 py-0.5 rounded-full border border-[#D91CD2]/30">
-                            {item}
+                            {t(item) || item}
                           </span>
                         ))}
                       </div>
