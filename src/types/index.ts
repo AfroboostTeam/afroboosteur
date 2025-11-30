@@ -1142,7 +1142,7 @@ export interface DiscountCard {
   title: string;
   description?: string;
   code: string;
-  discountPercentage: number;
+  discountPercentage?: number; // Optional - only for percentage discount
   usageLimit?: number;
   usageCount: number;
   expiryDate: DateOrTimestamp;
@@ -1151,8 +1151,17 @@ export interface DiscountCard {
   updatedAt: DateOrTimestamp;
   // Optional fields for targeting
   userEmail?: string; // For student-specific cards
+  userId?: string; // Student user ID
+  userName?: string; // Student name
   courseId?: string; // For course-specific cards
+  courseName?: string; // Course name for display
   cardType?: 'student' | 'course'; // Type of discount card
+  
+  // New fields for simplified flow
+  advantageType: 'free' | 'special_price' | 'percentage_discount'; // Advantage type
+  value?: number; // Special price amount or percentage value
+  recurringSchedule?: string[]; // Array of schedule IDs or time slot identifiers like "Wednesday-18:30"
+  qrCodeImage?: string; // Base64 QR code image
 }
 
 // Referral Interface

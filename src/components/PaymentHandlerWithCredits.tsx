@@ -157,7 +157,9 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
   };
 
   const isMethodAllowed = (methodId: PaymentMethod['id']) => {
+    // If no restrictions specified, allow all methods (like in course booking)
     if (!props.allowedPaymentMethods || props.allowedPaymentMethods.length === 0) return true;
+    // Otherwise check if method is in allowed list
     return props.allowedPaymentMethods.includes(methodId);
   };
 
@@ -193,49 +195,57 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
         });
       }
 
-      // Add other payment methods
-      if (isMethodAllowed('stripe')) {
+      // Add other payment methods - ALWAYS show all configured methods (like course booking)
+      // All methods should be available for all offers
+      
+      // Stripe (Credit/Debit Card) - Always add if configured
+      if (stripeEnabled) {
         methods.push({
           id: 'stripe',
           name: t('creditDebitCard'),
           icon: <FiCreditCard size={24} />,
-          isEnabled: stripeEnabled
+          isEnabled: true // Always enabled if Stripe is configured
         });
       }
 
-      if (isMethodAllowed('paypal')) {
+      // PayPal - Always add if configured
+      // PayPal should always be available when configured (like in course booking)
+      if (paypalEnabled) {
         methods.push({
           id: 'paypal',
           name: t('paypal'),
           icon: <FiDollarSign size={24} />,
-          isEnabled: paypalEnabled
+          isEnabled: true // Always enabled if PayPal is configured
         });
       }
 
-      if (isMethodAllowed('twint')) {
+      // TWINT - Always show if Stripe is configured (like in course booking)
+      // TWINT uses Stripe infrastructure, so enable it if Stripe is configured
+      const stripeConfigured = stripeDoc.exists() && stripeDoc.data().isConfigured; // Stripe configured (even if not enabled)
+      if (stripeConfigured) {
         methods.push({
           id: 'twint',
           name: 'TWINT',
           icon: <span className="text-orange-500 font-bold text-lg">📱</span>,
-          isEnabled: stripeEnabled // TWINT requires Stripe to be configured
+          isEnabled: true // Always enabled if Stripe is configured
         });
       }
 
-      if (isMethodAllowed('gift-card')) {
-        methods.push({
-          id: 'gift-card',
-          name: t('Use a gift card to pay for this purchase'),
-          icon: <FiGift size={24} />,
-          isEnabled: true
-        });
-      }
+      // Gift Card - Always available for all offers and courses
+      methods.push({
+        id: 'gift-card',
+        name: t('Use a gift card to pay for this purchase'),
+        icon: <FiGift size={24} />,
+        isEnabled: true
+      });
 
-      if (isMethodAllowed('discount-card')) {
+      // Discount Card - Always available when coachId is provided
+      if (props.coachId) {
         methods.push({
           id: 'discount-card',
           name: t('Use discount card') || 'Use discount card',
           icon: <FiPercent size={24} />,
-          isEnabled: Boolean(props.coachId)
+          isEnabled: true
         });
       }
       
@@ -243,8 +253,14 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
       
       const availableMethods = methods.filter(m => m.isEnabled);
       
+      // If no methods are available, check if it's because of restrictions
       if (availableMethods.length === 0) {
-        setError(t('noPaymentMethodsAvailable'));
+        // If we have allowedPaymentMethods but none are enabled, show helpful error
+        if (props.allowedPaymentMethods && props.allowedPaymentMethods.length > 0) {
+          setError(t('noPaymentMethodsAvailable') + '. Please configure payment methods in admin settings or contact support.');
+        } else {
+          setError(t('noPaymentMethodsAvailable'));
+        }
       } else if (availableMethods.length === 1) {
         // Only one method available, use it directly
         setSelectedMethod(availableMethods[0].id);

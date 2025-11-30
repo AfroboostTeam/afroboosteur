@@ -295,7 +295,18 @@ export default function Signup() {
       }
     } catch (err: any) {
       console.error('Google signup error:', err);
-      setError(`${t('errorOccurred')}: ${err?.message || t('tryAgainLater')}`);
+      const errorMessage = err?.message || err?.code || t('tryAgainLater');
+      
+      // Provide more helpful error messages
+      if (err?.message?.includes('Popup blocked')) {
+        setError(t('popupBlocked') || 'Popup blocked. Please allow popups for this site and try again.');
+      } else if (err?.message?.includes('Domain not authorized')) {
+        setError(t('domainNotAuthorized') || 'This domain is not authorized. Please contact support.');
+      } else if (err?.message?.includes('Network error')) {
+        setError(t('networkError') || 'Network error. Please check your connection and try again.');
+      } else {
+        setError(`${t('errorOccurred')}: ${errorMessage}`);
+      }
     } finally {
       setIsGoogleLoading(false);
     }

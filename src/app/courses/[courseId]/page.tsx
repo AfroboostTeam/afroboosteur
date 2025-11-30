@@ -16,12 +16,14 @@ import {
   FiArrowRight,
   FiMessageCircle,
   FiCopy,
-  FiCheckCircle
+  FiCheckCircle,
+  FiX
 } from 'react-icons/fi';
 
 import { useAuth } from '@/lib/auth';
 import { Course, Review, StudentTokenPackage, CourseSchedule } from '@/types';
-import { courseService, reviewService, userSubscriptionService, studentTokenPackageService, userService, coachReferralActivityService, coachReferralStatsService, scheduleService } from '@/lib/database';
+import { courseService, reviewService, userSubscriptionService, studentTokenPackageService, userService, coachReferralActivityService, coachReferralStatsService, scheduleService, offerPurchaseService } from '@/lib/database';
+import { checkUserSubscriptionStatus } from '@/lib/subscriptionUtils';
 import PaymentModal from '@/components/PaymentModal';
 import ReviewSystem from '@/components/ReviewSystem';
 import CourseBoost from '@/components/CourseBoost';
@@ -62,11 +64,16 @@ export default function CourseDetail() {
     setToast({ show: true, message, type });
   };
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
+  const [hasPurchasedOffer, setHasPurchasedOffer] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [bookingType, setBookingType] = useState<'subscription' | 'pay_per_session' | 'tokens'>('subscription');
   const [availableTokenPackages, setAvailableTokenPackages] = useState<StudentTokenPackage[]>([]);
   const [selectedTokenPackage, setSelectedTokenPackage] = useState<StudentTokenPackage | null>(null);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const [showBookingOptions, setShowBookingOptions] = useState(false);
+  const [showSubscriptionDatePicker, setShowSubscriptionDatePicker] = useState(false);
+  const [selectedScheduleForBooking, setSelectedScheduleForBooking] = useState<CourseSchedule | null>(null);
+  const [selectedDateForSubscription, setSelectedDateForSubscription] = useState<Date | null>(null);
 
   useEffect(() => {
     loadCourseData();
@@ -78,7 +85,7 @@ export default function CourseDetail() {
   useEffect(() => {
     if (user && course) {
       checkUserCourseStatus();
-      loadUserSubscription();
+      loadUserSubscription(); // This checks both subscription and offer purchases
       loadUserTokenPackages();
     }
   }, [user, course]);
@@ -111,16 +118,20 @@ export default function CourseDetail() {
   const loadUserSubscription = async () => {
     if (!user?.id) return;
     try {
-      const subscription = await userSubscriptionService.getActiveByUserId(user.id);
-      setUserSubscription(subscription);
-      // Default to subscription booking if user has active subscription
-      if (subscription) {
+      // Use the utility function that checks both subscription and offer purchases
+      const status = await checkUserSubscriptionStatus(user.id);
+      setUserSubscription(status.subscription);
+      setHasPurchasedOffer(status.hasPurchasedOffer);
+      setHasActiveSubscription(status.hasActiveSubscription);
+      
+      // Default to subscription booking if user has active subscription or purchased offer
+      if (status.hasActiveSubscription || status.hasPurchasedOffer) {
         setBookingType('subscription');
       } else {
         setBookingType('pay_per_session');
       }
     } catch (error) {
-      console.error('Error loading user subscription:', error);
+      console.error('Error loading user subscription status:', error);
     }
   };
 
@@ -317,9 +328,9 @@ export default function CourseDetail() {
       return;
     }
 
-    // If user has subscription, book directly with subscription
+    // If user has subscription, show date picker instead of booking directly
     if (bookingType === 'subscription' && userSubscription) {
-      bookWithSubscription();
+      setShowSubscriptionDatePicker(true);
       return;
     }
 
@@ -401,27 +412,50 @@ export default function CourseDetail() {
     }
   };
 
-  const bookWithSubscription = async () => {
-    if (!course || !user || !userSubscription) return;
+  const bookWithSubscription = async (selectedDate?: Date) => {
+    if (!course || !user) return;
+    
+    // User must have either subscription or purchased offer
+    if (!userSubscription && !hasPurchasedOffer) {
+      alert('You need an active subscription or offer purchase to book with this method');
+      return;
+    }
 
     try {
       setIsLoading(true);
+      setShowSubscriptionDatePicker(false);
 
-      // Use the new subscription-aware booking method
-      await bookingService.createWithSubscription(
-        {
+      // Use the selected date or default to next week
+      const scheduledDate = selectedDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // If user has subscription, use subscription booking method
+      if (hasActiveSubscription && userSubscription) {
+        await bookingService.createWithSubscription(
+          {
+            courseId: course.id,
+            studentId: user.id,
+            coachId: course.coachId,
+            status: 'confirmed',
+            paymentStatus: 'completed',
+            paymentAmount: 0, // No direct payment required
+            scheduledDate
+          },
+          course.id,
+          course.title,
+          course.coachName
+        );
+      } else if (hasPurchasedOffer) {
+        // User has purchased offer but no subscription - create booking with 0 payment
+        await bookingService.create({
           courseId: course.id,
           studentId: user.id,
           coachId: course.coachId,
           status: 'confirmed',
           paymentStatus: 'completed',
-          paymentAmount: 0, // No direct payment required
-          scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Next week
-        },
-        course.id,
-        course.title,
-        course.coachName
-      );
+          paymentAmount: 0, // No payment required - covered by offer purchase
+          scheduledDate
+        });
+      }
 
       // Update course student count
       await courseService.update(course.id, {
@@ -432,18 +466,18 @@ export default function CourseDetail() {
       await notificationService.create({
         userId: user.id,
         title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}" using your subscription. Check your dashboard for details.`,
+        message: `You have successfully booked "${course.title}" using your subscription/offer. Check your dashboard for details.`,
         type: 'booking',
         read: false
       });
 
       // Reload data
       await loadCourseData();
-      await loadUserSubscription();
+      await loadUserSubscription(); // This reloads both subscription and offer purchase status
       
     } catch (error) {
-      console.error('Subscription booking error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to book course with subscription');
+      console.error('Subscription/offer booking error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to book course');
     } finally {
       setIsLoading(false);
     }
@@ -784,8 +818,8 @@ export default function CourseDetail() {
                 </div>
               </div>
 
-              {/* Schedule Information & Helmet Reservation */}
-              {schedules.length > 0 && user && (
+              {/* Schedule Information & Helmet Reservation - Only show for users WITHOUT subscription */}
+              {schedules.length > 0 && user && !userSubscription && (
                 <div className="p-3 sm:p-4 bg-gray-900/70 rounded-lg border border-gray-800">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="font-semibold text-sm sm:text-base">{t('Upcoming Sessions - Reserve Your Helmet')}</h3>
@@ -869,107 +903,164 @@ export default function CourseDetail() {
 
               {/* Action Buttons */}
               <div className="space-y-3 sm:space-y-4">
-                {/* Subscription Status and Booking Options */}
-                {user && userSubscription && (
-                  <div className="bg-green-500/20 border border-green-500 rounded-lg p-3 sm:p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div>
-                        <p className="text-green-400 font-medium text-sm sm:text-base">{t('Active Subscription')}</p>
-                        <p className="text-xs sm:text-sm text-gray-300">{userSubscription.planName}</p>
+                {/* For users with active subscription or purchased offer - Only show date selection */}
+                {user && (hasActiveSubscription || hasPurchasedOffer) ? (
+                  <>
+                    {/* Title: "Choose your next session" */}
+                    <div className="text-center mb-4">
+                      <h3 className="text-xl font-bold text-white mb-2">{t('Choose your next session')}</h3>
+                      {userSubscription && userSubscription.planType === 'session_pack' && (
+                        <p className="text-sm text-gray-400">
+                          {userSubscription.remainingSessions} {t('sessions left')}
+                        </p>
+                      )}
+                      {hasPurchasedOffer && !userSubscription && (
+                        <p className="text-sm text-gray-400">
+                          {t('You have an active subscription')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Date Selection - Show list of upcoming dates */}
+                    {schedules.length > 0 && (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {schedules
+                          .filter(schedule => {
+                            const scheduleDate = schedule.startTime instanceof Date 
+                              ? schedule.startTime 
+                              : (schedule.startTime as any).toDate();
+                            return scheduleDate >= new Date();
+                          })
+                          .slice(0, 10)
+                          .map((schedule) => {
+                            const scheduleDate = schedule.startTime instanceof Date 
+                              ? schedule.startTime 
+                              : (schedule.startTime as any).toDate();
+                            const endTime = schedule.endTime instanceof Date 
+                              ? schedule.endTime 
+                              : (schedule.endTime as any).toDate();
+                            const isSelected = selectedDateForSubscription?.getTime() === scheduleDate.getTime();
+                            
+                            return (
+                              <button
+                                key={schedule.id}
+                                onClick={() => {
+                                  setSelectedScheduleForBooking(schedule);
+                                  setSelectedDateForSubscription(scheduleDate);
+                                }}
+                                disabled={isLoading || course.currentStudents >= course.maxStudents}
+                                className={`w-full p-4 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  isSelected
+                                    ? 'bg-purple-600/20 border-2 border-purple-500'
+                                    : 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-white font-medium">
+                                      {scheduleDate.toLocaleDateString('en-US', { 
+                                        weekday: 'long', 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      })}
+                                    </p>
+                                    <p className="text-gray-400 text-sm mt-1">
+                                      {scheduleDate.toLocaleTimeString('en-US', { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                      })} - {endTime.toLocaleTimeString('en-US', { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                      })}
+                                    </p>
+                                  </div>
+                                  <FiCalendar className={`${isSelected ? 'text-purple-400' : 'text-gray-400'}`} size={20} />
+                                </div>
+                              </button>
+                            );
+                          })}
                       </div>
-                      {userSubscription.planType === 'session_pack' && (
-                        <div className="sm:text-right">
-                          <p className="text-green-400 font-medium text-sm sm:text-base">
-                            {userSubscription.remainingSessions} {t('sessions left')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                    )}
 
-                {/* Booking Type Selection */}
-                {user && (userSubscription || availableTokenPackages.length > 0) && (
-                  <div className="space-y-3">
-                    <p className="text-sm sm:text-base font-medium">{t('How would you like to book?')}</p>
-                    <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                      {userSubscription && (
-                        <button
-                          onClick={() => setBookingType('subscription')}
-                          className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
-                            bookingType === 'subscription'
-                              ? 'bg-[#D91CD2] text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                          disabled={
-                            userSubscription.planType === 'session_pack' && 
-                            (!userSubscription.remainingSessions || userSubscription.remainingSessions <= 0)
-                          }
-                        >
-                          <span className="block font-medium">{t('Use Subscription')}</span>
-                          {userSubscription.planType === 'session_pack' && (
-                            <span className="block text-xs sm:text-sm opacity-75 mt-1">
-                              {userSubscription.remainingSessions || 0} {t('left')}
-                            </span>
+                    {/* Reserve helmet Button */}
+                    <button
+                      onClick={() => {
+                        if (selectedDateForSubscription && selectedScheduleForBooking) {
+                          bookWithSubscription(selectedDateForSubscription);
+                        } else {
+                          setShowSubscriptionDatePicker(true);
+                        }
+                      }}
+                      disabled={course.currentStudents >= course.maxStudents || (!selectedDateForSubscription && schedules.length === 0)}
+                      className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
+                    >
+                      {course.currentStudents >= course.maxStudents 
+                        ? t('Fully Booked')
+                        : !selectedDateForSubscription
+                          ? t('Select a date first')
+                          : t('Reserve helmet') || 'Reserve helmet'
+                      }
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Booking Type Selection - Only for users WITHOUT subscription */}
+                    {user && availableTokenPackages.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-sm sm:text-base font-medium">{t('How would you like to book?')}</p>
+                        <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                          {availableTokenPackages.length > 0 && (
+                            <button
+                              onClick={() => setBookingType('tokens')}
+                              className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
+                                bookingType === 'tokens'
+                                  ? 'bg-[#D91CD2] text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                              }`}
+                              disabled={availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions)}
+                            >
+                              <span className="block font-medium">{t('Use Tokens')}</span>
+                              <span className="block text-xs sm:text-sm opacity-75 mt-1">
+                                {availableTokenPackages.reduce((total, pkg) => total + pkg.remainingTokens, 0)} {t('tokens available')}
+                              </span>
+                            </button>
                           )}
-                        </button>
-                      )}
-                      
-                      {availableTokenPackages.length > 0 && (
-                        <button
-                          onClick={() => setBookingType('tokens')}
-                          className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
-                            bookingType === 'tokens'
-                              ? 'bg-[#D91CD2] text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                          disabled={availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions)}
-                        >
-                          <span className="block font-medium">{t('Use Tokens')}</span>
-                          <span className="block text-xs sm:text-sm opacity-75 mt-1">
-                            {availableTokenPackages.reduce((total, pkg) => total + pkg.remainingTokens, 0)} {t('tokens available')}
-                          </span>
-                        </button>
-                      )}
 
-                      <button
-                        onClick={() => setBookingType('pay_per_session')}
-                        className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
-                          bookingType === 'pay_per_session'
-                            ? 'bg-[#D91CD2] text-white'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        }`}
-                      >
-                        <span className="block font-medium">{t('Pay Per Session')}</span>
-                        <span className="block text-xs sm:text-sm opacity-75 mt-1">
-                          CHF {course.totalPrice} ({course.sessions} {t('sessions')}))
-                        </span>
-                      </button>
-                    </div>
-                  </div>
+                          <button
+                            onClick={() => setBookingType('pay_per_session')}
+                            className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
+                              bookingType === 'pay_per_session'
+                                ? 'bg-[#D91CD2] text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                          >
+                            <span className="block font-medium">{t('Pay Per Session')}</span>
+                            <span className="block text-xs sm:text-sm opacity-75 mt-1">
+                              CHF {course.totalPrice} ({course.sessions} {t('sessions')}))
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleBookCourse}
+                      disabled={
+                        course.currentStudents >= course.maxStudents ||
+                        (bookingType === 'tokens' && availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions))
+                      }
+                      className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
+                    >
+                      {course.currentStudents >= course.maxStudents 
+                        ? t('Fully Booked')
+                        : bookingType === 'tokens' && availableTokenPackages.length > 0
+                          ? `${t('Book with Tokens')} (${course.sessions} ${t('tokens needed')})`
+                          : `${t('Book Now')} - CHF ${course.totalPrice}`
+                      }
+                    </button>
+                  </>
                 )}
-
-                <button
-                  onClick={handleBookCourse}
-                  disabled={
-                    course.currentStudents >= course.maxStudents ||
-                    (bookingType === 'subscription' && userSubscription?.planType === 'session_pack' && 
-                     (!userSubscription.remainingSessions || userSubscription.remainingSessions <= 0)) ||
-                    (bookingType === 'tokens' && availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions))
-                  }
-                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
-                >
-                  {course.currentStudents >= course.maxStudents 
-                    ? t('Fully Booked')
-                    : bookingType === 'subscription' && userSubscription
-                      ? userSubscription.planType === 'session_pack'
-                        ? `${t('Book with Subscription')} (${userSubscription.remainingSessions} ${t('left')})`
-                        : t('Book with Annual Subscription')
-                      : bookingType === 'tokens' && availableTokenPackages.length > 0
-                        ? `${t('Book with Tokens')} (${course.sessions} ${t('tokens needed')})`
-                        : `${t('Book Now')} - CHF ${course.totalPrice}`
-                  }
-                </button>
 
                 
                 {/* Course Boost (only for course owner) */}
@@ -1167,6 +1258,103 @@ export default function CourseDetail() {
           preAppliedGiftCardCode={selectedGiftCardCode}
           preAppliedDiscountCardCode={selectedDiscountCardCode}
         />
+
+        {/* Subscription Date Picker Modal */}
+        {showSubscriptionDatePicker && course && userSubscription && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={(e) => e.target === e.currentTarget && setShowSubscriptionDatePicker(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gray-900 rounded-xl w-full max-w-md border border-gray-700 shadow-2xl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{t('Choose your next session')}</h2>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {t('Select a date to reserve with your subscription')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSubscriptionDatePicker(false)}
+                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <FiX className="text-gray-400" size={20} />
+                </button>
+              </div>
+
+              {/* Content - Date Selection */}
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                {schedules.length > 0 ? (
+                  <div className="space-y-3">
+                    {schedules
+                      .filter(schedule => {
+                        const scheduleDate = schedule.startTime instanceof Date 
+                          ? schedule.startTime 
+                          : (schedule.startTime as any).toDate();
+                        return scheduleDate >= new Date();
+                      })
+                      .slice(0, 10)
+                      .map((schedule) => {
+                        const scheduleDate = schedule.startTime instanceof Date 
+                          ? schedule.startTime 
+                          : (schedule.startTime as any).toDate();
+                        const endTime = schedule.endTime instanceof Date 
+                          ? schedule.endTime 
+                          : (schedule.endTime as any).toDate();
+                        
+                        return (
+                          <button
+                            key={schedule.id}
+                            onClick={() => {
+                              setSelectedScheduleForBooking(schedule);
+                              bookWithSubscription(scheduleDate);
+                            }}
+                            disabled={isLoading}
+                            className="w-full p-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-white font-medium">
+                                  {scheduleDate.toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                </p>
+                                <p className="text-gray-400 text-sm mt-1">
+                                  {scheduleDate.toLocaleTimeString('en-US', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })} - {endTime.toLocaleTimeString('en-US', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </p>
+                              </div>
+                              <FiCalendar className="text-purple-400" size={20} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">{t('No upcoming sessions available')}</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
 
         {/* Token Selection Modal */}
         <TokenSelectionModal

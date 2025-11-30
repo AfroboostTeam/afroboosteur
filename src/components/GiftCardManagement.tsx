@@ -56,6 +56,7 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
   });
 
   const [generatingQR, setGeneratingQR] = useState(false);
+  const [duplicatingCardId, setDuplicatingCardId] = useState<string | null>(null);
 
   const statusFilters = [
     { value: 'all', label: t('All Cards') },
@@ -243,6 +244,167 @@ export default function GiftCardManagement({ className = '', userType }: GiftCar
     } catch (error) {
       console.error('Error deleting gift card:', error);
       alert(t('Error deleting gift card. Please try again.'));
+    }
+  };
+
+  const handleEditCard = (card: GiftCard) => {
+    // Only allow editing if card is not used
+    if (card.isUsed) {
+      alert(t('Cannot edit a gift card that has been used'));
+      return;
+    }
+
+    setSelectedCard(card);
+    // Populate form with card data
+    const expirationDate = getDateValue(card.expirationDate);
+    const now = new Date();
+    const diffTime = expirationDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    setCardForm({
+      amount: card.amount.toString(),
+      description: card.description || '',
+      expirationDays: diffDays > 0 ? diffDays.toString() : '365',
+      expirationMethod: 'preset',
+      customExpirationDate: expirationDate.toISOString().slice(0, 16),
+      customTimeUnit: 'days',
+      customTimeValue: '1',
+      sendViaEmail: false,
+      recipientEmail: ''
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDuplicateCard = async (card: GiftCard) => {
+    if (!user) return;
+
+    setDuplicatingCardId(card.id);
+    setGeneratingQR(true);
+    try {
+      // Generate new card code
+      const cardCode = generateCardCode();
+      const qrCodeImage = await generateQRCode(cardCode);
+
+      // Use same expiration logic as original
+      const expirationDate = getDateValue(card.expirationDate);
+      const now = new Date();
+      const diffTime = expirationDate.getTime() - now.getTime();
+      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+      // Calculate new expiration date
+      const newExpirationDate = new Date();
+      newExpirationDate.setDate(newExpirationDate.getDate() + diffDays);
+
+      const cardData = {
+        issuerId: user.id,
+        issuerType: userType,
+        issuerName: `${user.firstName} ${user.lastName}`,
+        businessName: userType === 'seller' ? (user as any).businessName || `${user.firstName} ${user.lastName}` : undefined,
+        cardCode,
+        qrCodeImage,
+        amount: card.amount,
+        currency: card.currency || 'CHF',
+        description: card.description,
+        expirationDate: newExpirationDate.toISOString(),
+        remainingAmount: card.amount
+      };
+
+      const response = await fetch('/api/gift-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cardData)
+      });
+
+      if (response.ok) {
+        await loadGiftCards();
+        alert(t('Gift card duplicated successfully!'));
+      } else {
+        const errorData = await response.json();
+        alert(t('Error duplicating gift card: {{message}}', { message: errorData.error || 'Unknown error' }));
+      }
+    } catch (error) {
+      console.error('Error duplicating gift card:', error);
+      alert(t('Error duplicating gift card. Please try again.'));
+    } finally {
+      setGeneratingQR(false);
+      setDuplicatingCardId(null);
+    }
+  };
+
+  const handleUpdateCard = async () => {
+    if (!user || !selectedCard || !cardForm.amount) return;
+
+    // Only allow updating if card is not used
+    if (selectedCard.isUsed) {
+      alert(t('Cannot update a gift card that has been used'));
+      return;
+    }
+
+    setGeneratingQR(true);
+    try {
+      // Calculate expiration date
+      let expirationDate = new Date();
+
+      if (cardForm.expirationMethod === 'custom') {
+        if (cardForm.customExpirationDate) {
+          expirationDate = new Date(cardForm.customExpirationDate);
+        } else {
+          const timeValue = parseInt(cardForm.customTimeValue);
+          switch (cardForm.customTimeUnit) {
+            case 'hours':
+              expirationDate.setHours(expirationDate.getHours() + timeValue);
+              break;
+            case 'days':
+              expirationDate.setDate(expirationDate.getDate() + timeValue);
+              break;
+            case 'weeks':
+              expirationDate.setDate(expirationDate.getDate() + (timeValue * 7));
+              break;
+            case 'months':
+              expirationDate.setMonth(expirationDate.getMonth() + timeValue);
+              break;
+          }
+        }
+      } else {
+        expirationDate.setDate(expirationDate.getDate() + parseInt(cardForm.expirationDays));
+      }
+
+      const response = await fetch(`/api/gift-cards/${selectedCard.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issuerId: user.id,
+          amount: parseFloat(cardForm.amount),
+          description: cardForm.description,
+          expirationDate: expirationDate.toISOString()
+        })
+      });
+
+      if (response.ok) {
+        await loadGiftCards();
+        setShowCreateModal(false);
+        setSelectedCard(null);
+        setCardForm({
+          amount: '',
+          description: '',
+          expirationDays: '365',
+          expirationMethod: 'preset',
+          customExpirationDate: '',
+          customTimeUnit: 'days',
+          customTimeValue: '1',
+          sendViaEmail: false,
+          recipientEmail: ''
+        });
+        alert(t('Gift card updated successfully!'));
+      } else {
+        const errorData = await response.json();
+        alert(t('Error updating gift card: {{message}}', { message: errorData.error || 'Unknown error' }));
+      }
+    } catch (error) {
+      console.error('Error updating gift card:', error);
+      alert(t('Error updating gift card. Please try again.'));
+    } finally {
+      setGeneratingQR(false);
     }
   };
 
@@ -675,54 +837,94 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
 
                   {/* Actions */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-700 space-y-3 sm:space-y-0">
-                    <div className="flex items-center justify-center sm:justify-start space-x-2">
-                      <button
-                        onClick={() => downloadQRCode(card)}
-                        className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
-                        title={t('Download QR Code')}
-                      >
-                        <FiDownload size={18} />
-                      </button>
-                      <button
-                        onClick={() => shareQRCode(card)}
-                        className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
-                        title={t('Share QR Code')}
-                      >
-                        <FiShare2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => downloadCompleteCard(card)}
-                        className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
-                        title={t('Download Complete Card')}
-                      >
-                        <FiCreditCard size={18} />
-                      </button>
-                      <button
-                        onClick={() => copyCardCode(card.cardCode)}
-                        className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
-                        title={t('Copy Code')}
-                      >
-                        <FiCopy size={18} />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-center sm:justify-end space-x-2">
-                      {card.isActive && !card.isUsed && (
+                    {/* Actions - Organized in 2 rows with 4 icons per row */}
+                    <div className="space-y-2 mt-4">
+                      {/* Row 1: Download QR, Share, Download Card, Copy Code */}
+                      <div className="grid grid-cols-4 gap-2">
                         <button
-                          onClick={() => handleDeactivateCard(card.id)}
-                          className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
-                          title={t('Deactivate')}
+                          onClick={() => downloadQRCode(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                          title={t('Download QR Code Only')}
                         >
-                          <FiX size={18} />
+                          <FiDownload size={18} className="flex-shrink-0" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteCard(card.id)}
-                        className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                        title={t('Delete Permanently')}
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
+                        
+                        <button
+                          onClick={() => shareQRCode(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-green-400 hover:text-green-300 transition-colors bg-gray-700 hover:bg-green-500/10 rounded-lg min-h-[40px]"
+                          title={t('Share QR Code')}
+                        >
+                          <FiShare2 size={18} className="flex-shrink-0" />
+                        </button>
+                        
+                        <button
+                          onClick={() => downloadCompleteCard(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-purple-400 hover:text-purple-300 transition-colors bg-gray-700 hover:bg-purple-500/10 rounded-lg min-h-[40px]"
+                          title={t('Download Complete Card')}
+                        >
+                          <FiCreditCard size={18} className="flex-shrink-0" />
+                        </button>
+                        
+                        <button
+                          onClick={() => copyCardCode(card.cardCode)}
+                          className="flex items-center justify-center px-2 py-2.5 text-yellow-400 hover:text-yellow-300 transition-colors bg-gray-700 hover:bg-yellow-500/10 rounded-lg min-h-[40px]"
+                          title={t('Copy Code')}
+                        >
+                          <FiCopy size={18} className="flex-shrink-0" />
+                        </button>
+                      </div>
+                      
+                      {/* Row 2: Edit, Duplicate, Deactivate, Delete */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {/* Edit Button - Only for unused cards */}
+                        {!card.isUsed ? (
+                          <button
+                            onClick={() => handleEditCard(card)}
+                            className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                            title={t('Edit Card')}
+                            aria-label={t('Edit')}
+                          >
+                            <FiEdit3 size={18} className="flex-shrink-0" />
+                          </button>
+                        ) : (
+                          <div className="min-h-[40px]"></div> // Empty div to maintain grid layout
+                        )}
+                        
+                        {/* Duplicate Button - Available for all cards */}
+                        <button
+                          onClick={() => handleDuplicateCard(card)}
+                          disabled={generatingQR && duplicatingCardId === card.id}
+                          className="flex items-center justify-center px-2 py-2.5 text-indigo-400 hover:text-indigo-300 transition-colors bg-gray-700 hover:bg-indigo-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
+                          title={t('Duplicate Card')}
+                          aria-label={t('Duplicate')}
+                        >
+                          {generatingQR && duplicatingCardId === card.id ? (
+                            <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                          ) : (
+                            <FiCopy size={18} className="flex-shrink-0" />
+                          )}
+                        </button>
+                        
+                        {card.isActive && !card.isUsed ? (
+                          <button
+                            onClick={() => handleDeactivateCard(card.id)}
+                            className="flex items-center justify-center px-2 py-2.5 text-orange-400 hover:text-orange-300 transition-colors bg-gray-700 hover:bg-orange-500/10 rounded-lg min-h-[40px]"
+                            title={t('Deactivate')}
+                          >
+                            <FiX size={18} className="flex-shrink-0" />
+                          </button>
+                        ) : (
+                          <div className="min-h-[40px]"></div> // Empty div to maintain grid layout
+                        )}
+                        
+                        <button
+                          onClick={() => handleDeleteCard(card.id)}
+                          className="flex items-center justify-center px-2 py-2.5 text-red-400 hover:text-red-300 transition-colors bg-gray-700 hover:bg-red-500/10 rounded-lg min-h-[40px]"
+                          title={t('Delete Permanently')}
+                        >
+                          <FiTrash2 size={18} className="flex-shrink-0" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -806,52 +1008,94 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
                       )}
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-4 border-t border-gray-700">
-                      <button
-                        onClick={() => downloadQRCode(card)}
-                        className="text-blue-400 hover:text-blue-300 p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
-                        title={t('Download QR Code Only')}
-                      >
-                        <FiDownload size={18} />
-                      </button>
-                      <button
-                        onClick={() => downloadCompleteCard(card)}
-                        className="text-purple-400 hover:text-purple-300 p-2 rounded-lg hover:bg-purple-500/10 transition-colors"
-                        title={t('Download Complete Card')}
-                      >
-                        <FiCreditCard size={18} />
-                      </button>
-                      <button
-                        onClick={() => shareQRCode(card)}
-                        className="text-green-400 hover:text-green-300 p-2 rounded-lg hover:bg-green-500/10 transition-colors"
-                        title={t('Share QR Code')}
-                      >
-                        <FiShare2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => copyCardCode(card.cardCode)}
-                        className="text-yellow-400 hover:text-yellow-300 p-2 rounded-lg hover:bg-yellow-500/10 transition-colors"
-                        title={t('Copy Code')}
-                      >
-                        <FiCopy size={18} />
-                      </button>
-                      {card.isActive && !card.isUsed && (
+                    {/* Actions - Organized in 2 rows with 4 icons per row */}
+                    <div className="space-y-2 mt-6 pt-4 border-t border-gray-700">
+                      {/* Row 1: Download QR, Share, Download Card, Copy Code */}
+                      <div className="grid grid-cols-4 gap-2">
                         <button
-                          onClick={() => handleDeactivateCard(card.id)}
-                          className="text-orange-400 hover:text-orange-300 p-2 rounded-lg hover:bg-orange-500/10 transition-colors"
-                          title={t('Deactivate')}
+                          onClick={() => downloadQRCode(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                          title={t('Download QR Code Only')}
                         >
-                          <FiX size={18} />
+                          <FiDownload size={18} className="flex-shrink-0" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteCard(card.id)}
-                        className="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                        title={t('Delete Permanently')}
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
+                        
+                        <button
+                          onClick={() => shareQRCode(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-green-400 hover:text-green-300 transition-colors bg-gray-700 hover:bg-green-500/10 rounded-lg min-h-[40px]"
+                          title={t('Share QR Code')}
+                        >
+                          <FiShare2 size={18} className="flex-shrink-0" />
+                        </button>
+                        
+                        <button
+                          onClick={() => downloadCompleteCard(card)}
+                          className="flex items-center justify-center px-2 py-2.5 text-purple-400 hover:text-purple-300 transition-colors bg-gray-700 hover:bg-purple-500/10 rounded-lg min-h-[40px]"
+                          title={t('Download Complete Card')}
+                        >
+                          <FiCreditCard size={18} className="flex-shrink-0" />
+                        </button>
+                        
+                        <button
+                          onClick={() => copyCardCode(card.cardCode)}
+                          className="flex items-center justify-center px-2 py-2.5 text-yellow-400 hover:text-yellow-300 transition-colors bg-gray-700 hover:bg-yellow-500/10 rounded-lg min-h-[40px]"
+                          title={t('Copy Code')}
+                        >
+                          <FiCopy size={18} className="flex-shrink-0" />
+                        </button>
+                      </div>
+                      
+                      {/* Row 2: Edit, Duplicate, Deactivate, Delete */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {/* Edit Button - Only for unused cards */}
+                        {!card.isUsed ? (
+                          <button
+                            onClick={() => handleEditCard(card)}
+                            className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                            title={t('Edit Card')}
+                            aria-label={t('Edit')}
+                          >
+                            <FiEdit3 size={18} className="flex-shrink-0" />
+                          </button>
+                        ) : (
+                          <div className="min-h-[40px]"></div> // Empty div to maintain grid layout
+                        )}
+                        
+                        {/* Duplicate Button - Available for all cards */}
+                        <button
+                          onClick={() => handleDuplicateCard(card)}
+                          disabled={generatingQR && duplicatingCardId === card.id}
+                          className="flex items-center justify-center px-2 py-2.5 text-indigo-400 hover:text-indigo-300 transition-colors bg-gray-700 hover:bg-indigo-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
+                          title={t('Duplicate Card')}
+                          aria-label={t('Duplicate')}
+                        >
+                          {generatingQR && duplicatingCardId === card.id ? (
+                            <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                          ) : (
+                            <FiCopy size={18} className="flex-shrink-0" />
+                          )}
+                        </button>
+                        
+                        {card.isActive && !card.isUsed ? (
+                          <button
+                            onClick={() => handleDeactivateCard(card.id)}
+                            className="flex items-center justify-center px-2 py-2.5 text-orange-400 hover:text-orange-300 transition-colors bg-gray-700 hover:bg-orange-500/10 rounded-lg min-h-[40px]"
+                            title={t('Deactivate')}
+                          >
+                            <FiX size={18} className="flex-shrink-0" />
+                          </button>
+                        ) : (
+                          <div className="min-h-[40px]"></div> // Empty div to maintain grid layout
+                        )}
+                        
+                        <button
+                          onClick={() => handleDeleteCard(card.id)}
+                          className="flex items-center justify-center px-2 py-2.5 text-red-400 hover:text-red-300 transition-colors bg-gray-700 hover:bg-red-500/10 rounded-lg min-h-[40px]"
+                          title={t('Delete Permanently')}
+                        >
+                          <FiTrash2 size={18} className="flex-shrink-0" />
+                        </button>
+                      </div>
                     </div>
                   </Card>
                 </motion.div>
@@ -899,36 +1143,54 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-white">{t('Create Gift Card')}</h3>
+                <h3 className="text-xl font-semibold text-white">
+                  {selectedCard ? t('Edit Gift Card') : t('Create Gift Card')}
+                </h3>
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedCard(null);
+                    setCardForm({
+                      amount: '',
+                      description: '',
+                      expirationDays: '365',
+                      expirationMethod: 'preset',
+                      customExpirationDate: '',
+                      customTimeUnit: 'days',
+                      customTimeValue: '1',
+                      sendViaEmail: false,
+                      recipientEmail: ''
+                    });
+                  }}
                   className="text-gray-400 hover:text-white"
                 >
                   <FiX size={24} />
                 </button>
               </div>
 
-              {/* Tabs */}
-              <div className="flex space-x-2 mb-6 border-b border-gray-700">
-                <button
-                  onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: false, recipientEmail: '' }))}
-                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${!cardForm.sendViaEmail
-                    ? 'border-purple-500 text-purple-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                    }`}
-                >
-                  {t('Create Card')}
-                </button>
-                <button
-                  onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: true }))}
-                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${cardForm.sendViaEmail
-                    ? 'border-purple-500 text-purple-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                    }`}
-                >
-                  {t('Create & Send via Email')}
-                </button>
-              </div>
+              {/* Tabs - Only show for create mode */}
+              {!selectedCard && (
+                <div className="flex space-x-2 mb-6 border-b border-gray-700">
+                  <button
+                    onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: false, recipientEmail: '' }))}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${!cardForm.sendViaEmail
+                      ? 'border-purple-500 text-purple-400'
+                      : 'border-transparent text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    {t('Create Card')}
+                  </button>
+                  <button
+                    onClick={() => setCardForm(prev => ({ ...prev, sendViaEmail: true }))}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${cardForm.sendViaEmail
+                      ? 'border-purple-500 text-purple-400'
+                      : 'border-transparent text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    {t('Create & Send via Email')}
+                  </button>
+                </div>
+              )}
 
               <div className="space-y-4">
                 {/* Email field - only shown in second tab */}
@@ -1081,25 +1343,46 @@ ${card.isUsed && card.remainingAmount ? `💳 Remaining: ${card.remainingAmount}
 
               <div className="flex justify-end space-x-4 mt-8">
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setSelectedCard(null);
+                    setCardForm({
+                      amount: '',
+                      description: '',
+                      expirationDays: '365',
+                      expirationMethod: 'preset',
+                      customExpirationDate: '',
+                      customTimeUnit: 'days',
+                      customTimeValue: '1',
+                      sendViaEmail: false,
+                      recipientEmail: ''
+                    });
+                  }}
                   className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
                 >
                   {t('Cancel')}
                 </button>
                 <button
-                  onClick={handleCreateCard}
+                  type="button"
+                  onClick={selectedCard ? handleUpdateCard : handleCreateCard}
                   disabled={!cardForm.amount || generatingQR || (cardForm.sendViaEmail && !cardForm.recipientEmail)}
                   className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   {generatingQR ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>{t('Creating...')}</span>
+                      <span>{selectedCard ? t('Updating...') : t('Creating...')}</span>
                     </>
                   ) : (
                     <>
                       <FiCode size={18} />
-                      <span>{cardForm.sendViaEmail ? t('Create & Send') : t('Create')}</span>
+                      <span>
+                        {selectedCard 
+                          ? t('Update')
+                          : (cardForm.sendViaEmail ? t('Create & Send') : t('Create'))
+                        }
+                      </span>
                     </>
                   )}
                 </button>

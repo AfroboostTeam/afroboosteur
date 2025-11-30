@@ -165,14 +165,12 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
     }));
   };
 
-  const mapAllowedPaymentMethods = (offer: Offer, option?: OfferOption) => {
-    const methods = getPaymentMethods(offer, option);
-    const mapped: Array<'stripe' | 'twint' | 'gift-card' | 'discount-card'> = [];
-    if (methods.includes('credit_card')) mapped.push('stripe');
-    if (methods.includes('twint')) mapped.push('twint');
-    if (methods.includes('gift_card')) mapped.push('gift-card');
-    if (methods.includes('discount_card')) mapped.push('discount-card');
-    return mapped;
+  // Don't restrict payment methods - show all available methods like in course booking
+  // This allows users to use any configured payment method (stripe, paypal, twint, credits, etc.)
+  const mapAllowedPaymentMethods = (offer: Offer, option?: OfferOption): Array<'stripe' | 'twint' | 'gift-card' | 'discount-card' | 'credits' | 'paypal'> | undefined => {
+    // Return undefined to allow all payment methods (same as course booking)
+    // PaymentHandlerWithCredits will show all configured methods when allowedPaymentMethods is undefined
+    return undefined;
   };
 
   const openPayment = (offer: Offer) => {
@@ -475,7 +473,12 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
               className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-gray-900 rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden border border-gray-800 shadow-2xl relative flex flex-col">
+              <div className="bg-gray-900 rounded-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-gray-800 shadow-2xl relative flex flex-col"
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#D91CD2 #1F2937'
+                }}
+              >
                 <button
                   onClick={onClose}
                   className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-800/50 hover:bg-gray-700 transition-colors"
@@ -508,37 +511,39 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden flex flex-col flex-shrink-0">
-                  {/* Tab Navigation - Always Visible */}
+                <div className="flex-1 flex flex-col">
+                  {/* Tab Navigation - Always Visible - Responsive with max 3 per row */}
                   {!isLoadingOffers && visibleOffers.length > 0 && (
-                    <div className="flex gap-1 border-b border-gray-800 bg-gray-900/50 px-2 sm:px-4 flex-shrink-0">
-                      {visibleOffers.map((offer, index) => {
-                        // Use title directly from database - no hardcoded overrides
-                        const displayName = offer.title || '';
-                        
-                        return (
-                          <button
-                            key={offer.id}
-                            onClick={() => {
-                              setActiveTab(index);
-                              // Scroll to top of content when switching tabs
-                              const contentArea = document.querySelector('[data-offer-content]');
-                              if (contentArea) {
-                                contentArea.scrollTop = 0;
-                              }
-                            }}
-                            className={`flex-1 min-w-0 px-2 sm:px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
-                              activeTab === index
-                                ? 'border-b-2 border-[#D91CD2] text-[#D91CD2]'
-                                : 'text-gray-400 hover:text-gray-200'
-                            }`}
-                          >
-                            <span className="mr-1">{offer.emoji || '🎯'}</span>
-                            <span className="hidden sm:inline truncate">{displayName}</span>
-                            <span className="sm:hidden truncate">{displayName.split(' ')[0]}</span>
-                          </button>
-                        );
-                      })}
+                    <div className="border-b border-gray-800 bg-gray-900/50 px-2 sm:px-4 flex-shrink-0">
+                      <div className="grid grid-cols-3 gap-1 sm:flex sm:flex-wrap">
+                        {visibleOffers.map((offer, index) => {
+                          // Use title directly from database - no hardcoded overrides
+                          const displayName = offer.title || '';
+                          
+                          return (
+                            <button
+                              key={offer.id}
+                              onClick={() => {
+                                setActiveTab(index);
+                                // Scroll to top of content when switching tabs
+                                const contentArea = document.querySelector('[data-offer-content]');
+                                if (contentArea) {
+                                  contentArea.scrollTop = 0;
+                                }
+                              }}
+                              className={`flex-1 min-w-0 px-2 sm:px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap text-center sm:text-left ${
+                                activeTab === index
+                                  ? 'border-b-2 border-[#D91CD2] text-[#D91CD2] bg-gray-800/50'
+                                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/30'
+                              }`}
+                            >
+                              <span className="mr-1">{offer.emoji || '🎯'}</span>
+                              <span className="hidden sm:inline truncate">{displayName}</span>
+                              <span className="sm:hidden truncate text-[10px]">{displayName.split(' ')[0] || displayName.substring(0, 8)}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -549,14 +554,10 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
                     </div>
                   )}
 
-                  {/* Scrollable Offer Content */}
+                  {/* Offer Content */}
                   <div 
                     data-offer-content
-                    className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-4 w-full max-w-full min-w-0"
-                    style={{
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#D91CD2 #000000'
-                    }}
+                    className="flex-1 p-3 sm:p-4 w-full max-w-full min-w-0"
                   >
                     {offersContent}
                   </div>
@@ -624,7 +625,7 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
           transactionType="course"
           businessId={activePurchase.offer.coachId}
           coachId={activePurchase.offer.coachId}
-          allowedPaymentMethods={mapAllowedPaymentMethods(activePurchase.offer, activePurchase.option)}
+          allowedPaymentMethods={undefined}
           preAppliedDiscountCardCode={selectedDiscountCardCode}
         />
       )}

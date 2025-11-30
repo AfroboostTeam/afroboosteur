@@ -22,7 +22,7 @@ import {
 } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/auth';
-import CreateDiscountCardModal from './CreateDiscountCardModal';
+import SimplifiedDiscountCardModal from './SimplifiedDiscountCardModal';
 
 interface DiscountCard {
   id: string;
@@ -62,9 +62,12 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
   const [discountCards, setDiscountCards] = useState<DiscountCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingCard, setEditingCard] = useState<DiscountCard | null>(null);
   const [selectedCard, setSelectedCard] = useState<DiscountCard | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'used'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchCourse, setSearchCourse] = useState('');
+  const [searchExpiration, setSearchExpiration] = useState('');
 
   useEffect(() => {
     loadDiscountCards();
@@ -225,6 +228,141 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
     } catch (error) {
       console.error('Error deactivating discount card:', error);
       alert(t('Error deactivating discount card'));
+    }
+  };
+
+  const handleEditCard = (card: DiscountCard) => {
+    // Only allow editing if card is not used
+    const usageCount = typeof card.usageCount === 'number' ? card.usageCount : 0;
+    if (usageCount > 0) {
+      alert(t('Cannot edit a discount card that has been used'));
+      return;
+    }
+
+    setEditingCard(card);
+    setShowCreateModal(true);
+  };
+
+  const handleDuplicateCard = async (card: DiscountCard) => {
+    if (!confirm(t('Are you sure you want to duplicate this discount card?'))) {
+      return;
+    }
+
+    setDuplicatingCardId(card.id);
+    try {
+      // Generate new unique code following the same format as the API
+      // Format: {COACHNAME}{percentage}{timestamp}
+      const coachName = card.coachName || 'COACH';
+      const cleanName = coachName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+      const timestamp = Date.now().toString().slice(-6);
+      const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+      const newCode = `${cleanName}${card.discountPercentage || 10}${timestamp}${randomSuffix}`;
+
+      // Generate new QR code with the new unique code (this ensures QR is different)
+      const qrCodeImage = await generateQRCode(newCode);
+
+      // Prepare duplicate card data - API will create with new code, but we'll send our generated one
+      const duplicateData = {
+        coachId: card.coachId,
+        title: card.title,
+        description: card.description || '',
+        discountPercentage: card.discountPercentage,
+        userEmail: card.memberEmail || card.userEmail,
+        courseId: card.courseId,
+        cardType: card.cardType || 'student',
+        expirationDate: card.expiryDate || card.expirationDate || new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        maxUsage: card.usageLimit || card.maxUsage || 1,
+        code: newCode, // Send the new code
+        qrCodeImage: qrCodeImage // Send the new QR code
+      };
+
+      // Create the duplicate via API
+      const response = await fetch('/api/discount-cards/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(duplicateData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newCard = data.discountCard || data;
+        
+        // Map backend properties to frontend interface
+        const mappedCard = {
+          ...newCard,
+          expiryDate: newCard.expirationDate || newCard.expiryDate || new Date().toISOString(),
+          memberEmail: newCard.userEmail || newCard.memberEmail,
+          memberName: newCard.userName || newCard.memberName,
+          usageCount: typeof newCard.usageCount === 'number' ? newCard.usageCount : 0,
+          usageLimit: typeof newCard.usageLimit === 'number' ? newCard.usageLimit : 
+                     (typeof newCard.maxUsage === 'number' ? newCard.maxUsage : null),
+          discountPercentage: typeof newCard.discountPercentage === 'number' ? newCard.discountPercentage : 0,
+        };
+        
+        setDiscountCards(prev => [mappedCard, ...prev]);
+        alert(t('Discount card duplicated successfully!'));
+      } else {
+        const error = await response.json();
+        alert(t('Error duplicating discount card: {{message}}', { message: error.message || error.error || 'Unknown error' }));
+      }
+    } catch (error) {
+      console.error('Error duplicating discount card:', error);
+      alert(t('Error duplicating discount card. Please try again.'));
+    } finally {
+      setDuplicatingCardId(null);
+    }
+  };
+
+  const handleUpdateCard = async (cardData: {
+    userId?: string;
+    userEmail?: string;
+    userName?: string;
+    courseId?: string;
+    recurringSchedule?: string[];
+    advantageType: 'free' | 'special_price' | 'percentage_discount';
+    value?: number;
+    expirationDate: string;
+    description?: string;
+  }) => {
+    if (!editingCard) return;
+
+    try {
+      // Map the new format to the old format for API compatibility
+      const discountPercentage = cardData.advantageType === 'percentage_discount' 
+        ? (cardData.value || 0)
+        : (editingCard.discountPercentage || 0);
+
+      const response = await fetch(`/api/discount-cards/${coachId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cardId: editingCard.id,
+          title: editingCard.title, // Keep original title format or update
+          description: cardData.description || '',
+          expirationDate: cardData.expirationDate,
+          userEmail: cardData.userEmail,
+          courseId: cardData.courseId,
+          discountPercentage: discountPercentage,
+          recurringSchedule: cardData.recurringSchedule
+        })
+      });
+
+      if (response.ok) {
+        await loadDiscountCards(); // Reload to get updated data
+        setShowCreateModal(false);
+        setEditingCard(null);
+        alert(t('Discount card updated successfully!'));
+      } else {
+        const error = await response.json();
+        alert(t('Error updating discount card: {{message}}', { message: error.message || error.error || 'Unknown error' }));
+      }
+    } catch (error) {
+      console.error('Error updating discount card:', error);
+      alert(t('Error updating discount card. Please try again.'));
     }
   };
 
@@ -849,54 +987,96 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => downloadQRCode(card)}
-                      className="flex items-center space-x-1 px-3 py-2 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg text-sm"
-                      title={t('Download QR Code Only')}
-                    >
-                      <FiDownload size={16} />
-                      <span>{t('QR')}</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => downloadCompleteCard(card)}
-                      className="flex items-center space-x-1 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors bg-gray-700 hover:bg-purple-500/10 rounded-lg text-sm"
-                      title={t('Download Complete Card')}
-                    >
-                      <FiCreditCard size={16} />
-                      <span>{t('Card')}</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => shareQRCode(card)}
-                      className="flex items-center space-x-1 px-3 py-2 text-green-400 hover:text-green-300 transition-colors bg-gray-700 hover:bg-green-500/10 rounded-lg text-sm"
-                      title={t('Share QR Code')}
-                    >
-                      <FiShare2 size={16} />
-                      <span>{t('Share')}</span>
-                    </button>
-                    
-                    {card.isActive && (
+                  {/* Action Buttons - Organized in 2 rows for better mobile display */}
+                  <div className="space-y-2 mt-4">
+                    {/* Row 1: Download QR, Share, Download Card, Copy Code */}
+                    <div className="grid grid-cols-4 gap-2">
                       <button
-                        onClick={() => handleDeactivateCard(card.id)}
-                        className="flex items-center space-x-1 px-3 py-2 text-orange-400 hover:text-orange-300 transition-colors bg-gray-700 hover:bg-orange-500/10 rounded-lg text-sm"
-                        title={t('Deactivate card')}
+                        onClick={() => downloadQRCode(card)}
+                        className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                        title={t('Download QR Code Only')}
                       >
-                        <FiEye size={16} />
-                        <span>{t('Deactivate')}</span>
+                        <FiDownload size={18} className="flex-shrink-0" />
                       </button>
-                    )}
+                      
+                      <button
+                        onClick={() => shareQRCode(card)}
+                        className="flex items-center justify-center px-2 py-2.5 text-green-400 hover:text-green-300 transition-colors bg-gray-700 hover:bg-green-500/10 rounded-lg min-h-[40px]"
+                        title={t('Share QR Code')}
+                      >
+                        <FiShare2 size={18} className="flex-shrink-0" />
+                      </button>
+                      
+                      <button
+                        onClick={() => downloadCompleteCard(card)}
+                        className="flex items-center justify-center px-2 py-2.5 text-purple-400 hover:text-purple-300 transition-colors bg-gray-700 hover:bg-purple-500/10 rounded-lg min-h-[40px]"
+                        title={t('Download Complete Card')}
+                      >
+                        <FiCreditCard size={18} className="flex-shrink-0" />
+                      </button>
+                      
+                      <button
+                        onClick={() => copyCardCode(card.code)}
+                        className="flex items-center justify-center px-2 py-2.5 text-yellow-400 hover:text-yellow-300 transition-colors bg-gray-700 hover:bg-yellow-500/10 rounded-lg min-h-[40px]"
+                        title={t('Copy Code')}
+                      >
+                        <FiCopy size={18} className="flex-shrink-0" />
+                      </button>
+                    </div>
                     
-                    <button
-                      onClick={() => handleDeleteCard(card.id)}
-                      className="flex items-center space-x-1 px-3 py-2 text-red-400 hover:text-red-300 transition-colors bg-gray-700 hover:bg-red-500/10 rounded-lg text-sm"
-                      title={t('Delete Permanently')}
-                    >
-                      <FiTrash2 size={16} />
-                      <span>{t('Delete')}</span>
-                    </button>
+                    {/* Row 2: Edit, Duplicate, Deactivate, Delete */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {/* Edit Button - Only for unused cards */}
+                      {(() => {
+                        const usageCount = typeof card.usageCount === 'number' ? card.usageCount : 0;
+                        if (usageCount === 0) {
+                          return (
+                            <button
+                              onClick={() => handleEditCard(card)}
+                              className="flex items-center justify-center px-2 py-2.5 text-blue-400 hover:text-blue-300 transition-colors bg-gray-700 hover:bg-blue-500/10 rounded-lg min-h-[40px]"
+                              title={t('Edit Card')}
+                            >
+                              <FiEdit size={18} className="flex-shrink-0" />
+                            </button>
+                          );
+                        }
+                        return <div className="min-h-[40px]"></div>; // Empty div to maintain grid layout
+                      })()}
+                      
+                      {/* Duplicate Button - Available for all cards */}
+                      <button
+                        onClick={() => handleDuplicateCard(card)}
+                        disabled={duplicatingCardId === card.id}
+                        className="flex items-center justify-center px-2 py-2.5 text-indigo-400 hover:text-indigo-300 transition-colors bg-gray-700 hover:bg-indigo-500/10 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
+                        title={t('Duplicate Card')}
+                      >
+                        {duplicatingCardId === card.id ? (
+                          <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        ) : (
+                          <FiCopy size={18} className="flex-shrink-0" />
+                        )}
+                      </button>
+                      
+                      {card.isActive ? (
+                        <button
+                          onClick={() => handleDeactivateCard(card.id)}
+                          className="flex items-center justify-center px-2 py-2.5 text-orange-400 hover:text-orange-300 transition-colors bg-gray-700 hover:bg-orange-500/10 rounded-lg min-h-[40px]"
+                          title={t('Deactivate card')}
+                        >
+                          <FiEye size={18} className="flex-shrink-0" />
+                        </button>
+                      ) : (
+                        <div className="min-h-[40px]"></div> // Empty div to maintain grid layout
+                      )}
+                      
+                      <button
+                        onClick={() => handleDeleteCard(card.id)}
+                        className="flex items-center justify-center px-2 py-2.5 text-red-400 hover:text-red-300 transition-colors bg-gray-700 hover:bg-red-500/10 rounded-lg min-h-[40px]"
+                        title={t('Delete Permanently')}
+                      >
+                        <FiTrash2 size={18} className="flex-shrink-0" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -905,12 +1085,16 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
         </div>
       )}
 
-      {/* Create Discount Card Modal */}
-      {showCreateModal && (
-        <CreateDiscountCardModal
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateCard}
+      {/* Create/Edit Discount Card Modal */}
+      {(showCreateModal || editingCard) && (
+        <SimplifiedDiscountCardModal
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingCard(null);
+          }}
+          onSubmit={editingCard ? handleUpdateCard : handleCreateCard}
           coachId={coachId}
+          editingCard={editingCard || undefined}
         />
       )}
     </div>
