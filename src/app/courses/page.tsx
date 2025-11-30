@@ -217,8 +217,8 @@ export default function Courses() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${selectedCourse.title}". Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${selectedCourse.title}". Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });

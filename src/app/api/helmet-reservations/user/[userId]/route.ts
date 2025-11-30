@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { helmetReservationService, userQRCodeService } from '@/lib/database';
+import { helmetReservationService, userQRCodeService, userService, courseService } from '@/lib/database';
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,37 @@ export async function GET(
     }
 
     // Get user's reservations
-    const reservations = await helmetReservationService.getByUserId(userId);
+    let reservations = await helmetReservationService.getByUserId(userId);
+
+    // Enrich reservations with coach names if missing
+    for (const reservation of reservations) {
+      if (!reservation.coachName || reservation.coachName === '' || reservation.coachName === 'Coach') {
+        try {
+          // Try to get coach name from course
+          if (reservation.courseId) {
+            const course = await courseService.getById(reservation.courseId);
+            if (course?.coachName) {
+              reservation.coachName = course.coachName;
+            } else if (reservation.coachId) {
+              // Try to get coach name from user
+              const coach = await userService.getById(reservation.coachId);
+              if (coach) {
+                reservation.coachName = `${coach.firstName} ${coach.lastName}`;
+              }
+            }
+          } else if (reservation.coachId) {
+            // Try to get coach name from user
+            const coach = await userService.getById(reservation.coachId);
+            if (coach) {
+              reservation.coachName = `${coach.firstName} ${coach.lastName}`;
+            }
+          }
+        } catch (error) {
+          console.error(`Error enriching reservation ${reservation.id} with coach name:`, error);
+          // Keep existing coachName or leave empty
+        }
+      }
+    }
 
     // Get user's QR code
     const userQRCode = await userQRCodeService.getByUserId(userId);

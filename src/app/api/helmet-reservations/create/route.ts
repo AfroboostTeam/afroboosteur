@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { helmetReservationService, scheduleService, userService, userQRCodeService, notificationService } from '@/lib/database';
+import { helmetReservationService, scheduleService, userService, userQRCodeService, notificationService, courseService } from '@/lib/database';
 import QRCode from 'qrcode';
 
 export async function POST(request: NextRequest) {
@@ -31,6 +31,24 @@ export async function POST(request: NextRequest) {
         { error: 'Schedule not found' },
         { status: 404 }
       );
+    }
+
+    // Get course details to get coach name
+    const course = await courseService.getById(schedule.courseId);
+    if (!course) {
+      return NextResponse.json(
+        { error: 'Course not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get coach details to get coach name
+    let coachName = course.coachName || '';
+    if (!coachName && schedule.createdBy) {
+      const coach = await userService.getById(schedule.createdBy);
+      if (coach) {
+        coachName = `${coach.firstName} ${coach.lastName}`;
+      }
     }
 
     // Check if user already has a reservation for this schedule
@@ -78,10 +96,10 @@ export async function POST(request: NextRequest) {
       userName: `${user.firstName} ${user.lastName}`,
       userEmail: user.email,
       courseId: schedule.courseId,
-      courseName: schedule.title,
+      courseName: course.title || schedule.title,
       scheduleId,
-      coachId: schedule.createdBy,
-      coachName: '', // Will be populated from course data if needed
+      coachId: schedule.createdBy || course.coachId,
+      coachName: coachName || course.coachName || '',
       reservationDate: new Date(),
       classDate: schedule.startTime,
       classStartTime: schedule.startTime,
@@ -99,27 +117,27 @@ export async function POST(request: NextRequest) {
       ? schedule.endTime
       : schedule.endTime.toDate();
 
-    const formattedDate = classDate.toLocaleDateString('en-US', {
+    const formattedDate = classDate.toLocaleDateString('fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-    const formattedTime = `${classDate.toLocaleTimeString('en-US', {
+    const formattedTime = `${classDate.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
-    })} - ${endTime.toLocaleTimeString('en-US', {
+      hour12: false
+    })} - ${endTime.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: false
     })}`;
 
     // Send confirmation notification to user
     await notificationService.create({
       userId,
-      title: 'Helmet Reserved!',
-      message: `Your helmet is reserved for ${schedule.title} on ${formattedDate}`,
+      title: 'Casque réservé!',
+      message: `Votre casque est réservé pour ${course.title || schedule.title} le ${formattedDate}`,
       type: 'booking',
       read: false
     });

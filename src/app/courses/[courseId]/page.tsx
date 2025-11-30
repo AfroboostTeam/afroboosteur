@@ -406,8 +406,8 @@ export default function CourseDetail() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}" using ${course.sessions} tokens from your ${tokenPackage.packageName} package.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}" en utilisant ${course.sessions} jetons de votre pack ${tokenPackage.packageName}.`,
         type: 'booking',
         read: false
       });
@@ -443,20 +443,20 @@ export default function CourseDetail() {
 
       // If user has subscription, use subscription booking method
       if (hasActiveSubscription && userSubscription) {
-        await bookingService.createWithSubscription(
-          {
-            courseId: course.id,
-            studentId: user.id,
-            coachId: course.coachId,
-            status: 'confirmed',
-            paymentStatus: 'completed',
-            paymentAmount: 0, // No direct payment required
+      await bookingService.createWithSubscription(
+        {
+          courseId: course.id,
+          studentId: user.id,
+          coachId: course.coachId,
+          status: 'confirmed',
+          paymentStatus: 'completed',
+          paymentAmount: 0, // No direct payment required
             scheduledDate
-          },
-          course.id,
-          course.title,
-          course.coachName
-        );
+        },
+        course.id,
+        course.title,
+        course.coachName
+      );
       } else if (hasPurchasedOffer) {
         // User has purchased offer but no subscription - create booking with 0 payment
         await bookingService.create({
@@ -478,8 +478,8 @@ export default function CourseDetail() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}" using your subscription/offer. Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}" en utilisant votre abonnement/offre. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -548,8 +548,8 @@ export default function CourseDetail() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}". Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}". Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -557,8 +557,8 @@ export default function CourseDetail() {
       // Send notification to coach
       await notificationService.create({
         userId: course.coachId,
-        title: 'New Course Booking!',
-        message: `${user.firstName} ${user.lastName} has booked your course "${course.title}". Payment method: ${user.credits >= course.price ? 'Credits' : 'Card'}. Check your dashboard for details.`,
+        title: 'Nouvelle réservation de cours!',
+        message: `${user.firstName} ${user.lastName} a réservé votre cours "${course.title}". Méthode de paiement: ${user.credits >= course.price ? 'Crédits' : 'Carte'}. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -658,8 +658,8 @@ export default function CourseDetail() {
       // Send notification to student
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}". Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}". Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -667,8 +667,8 @@ export default function CourseDetail() {
       // Send notification to coach
       await notificationService.create({
         userId: course.coachId,
-        title: 'New Course Booking!',
-        message: `${user.firstName} ${user.lastName} has booked your course "${course.title}" via ${method === 'credits' ? 'Credits' : method}. Check your dashboard for details.`,
+        title: 'Nouvelle réservation de cours!',
+        message: `${user.firstName} ${user.lastName} a réservé votre cours "${course.title}" via ${method === 'credits' ? 'Crédits' : method}. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -925,8 +925,8 @@ export default function CourseDetail() {
                       <h3 className="text-xl font-bold text-white mb-2">{t('Choose your next session')}</h3>
                       {userSubscription && userSubscription.planType === 'session_pack' && (
                         <p className="text-sm text-gray-400">
-                          {userSubscription.remainingSessions} {t('sessions left')}
-                        </p>
+                            {userSubscription.remainingSessions} {t('sessions left')}
+                          </p>
                       )}
                       {hasPurchasedOffer && !userSubscription && (
                         <p className="text-sm text-gray-400">
@@ -961,7 +961,7 @@ export default function CourseDetail() {
                             );
                             
                             return (
-                              <button
+                        <button
                                 key={schedule.id}
                                 onClick={() => {
                                   if (!hasReservation) {
@@ -982,7 +982,7 @@ export default function CourseDetail() {
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-2">
                                       <p className="text-white font-medium">
-                                        {scheduleDate.toLocaleDateString('en-US', { 
+                                        {scheduleDate.toLocaleDateString('fr-FR', { 
                                           weekday: 'long', 
                                           year: 'numeric', 
                                           month: 'long', 
@@ -993,22 +993,24 @@ export default function CourseDetail() {
                                         <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full flex items-center space-x-1">
                                           <FiCheckCircle size={12} />
                                           <span>{t('Reserved')}</span>
-                                        </span>
-                                      )}
+                            </span>
+                          )}
                                     </div>
                                     <p className="text-gray-400 text-sm mt-1">
-                                      {scheduleDate.toLocaleTimeString('en-US', { 
+                                      {scheduleDate.toLocaleTimeString('fr-FR', { 
                                         hour: '2-digit', 
-                                        minute: '2-digit' 
-                                      })} - {endTime.toLocaleTimeString('en-US', { 
+                                        minute: '2-digit',
+                                        hour12: false
+                                      })} - {endTime.toLocaleTimeString('fr-FR', { 
                                         hour: '2-digit', 
-                                        minute: '2-digit' 
+                                        minute: '2-digit',
+                                        hour12: false
                                       })}
                                     </p>
                                   </div>
                                   <FiCalendar className={`${hasReservation ? 'text-green-400' : isSelected ? 'text-purple-400' : 'text-gray-400'}`} size={20} />
                                 </div>
-                              </button>
+                        </button>
                             );
                           })}
                       </div>
@@ -1093,55 +1095,55 @@ export default function CourseDetail() {
                       <div className="space-y-3">
                         <p className="text-sm sm:text-base font-medium">{t('How would you like to book?')}</p>
                         <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                          {availableTokenPackages.length > 0 && (
-                            <button
-                              onClick={() => setBookingType('tokens')}
-                              className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
-                                bookingType === 'tokens'
-                                  ? 'bg-[#D91CD2] text-white'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                              }`}
-                              disabled={availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions)}
-                            >
-                              <span className="block font-medium">{t('Use Tokens')}</span>
-                              <span className="block text-xs sm:text-sm opacity-75 mt-1">
-                                {availableTokenPackages.reduce((total, pkg) => total + pkg.remainingTokens, 0)} {t('tokens available')}
-                              </span>
-                            </button>
-                          )}
+                      {availableTokenPackages.length > 0 && (
+                        <button
+                          onClick={() => setBookingType('tokens')}
+                          className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
+                            bookingType === 'tokens'
+                              ? 'bg-[#D91CD2] text-white'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          }`}
+                          disabled={availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions)}
+                        >
+                          <span className="block font-medium">{t('Use Tokens')}</span>
+                          <span className="block text-xs sm:text-sm opacity-75 mt-1">
+                            {availableTokenPackages.reduce((total, pkg) => total + pkg.remainingTokens, 0)} {t('tokens available')}
+                          </span>
+                        </button>
+                      )}
 
-                          <button
-                            onClick={() => setBookingType('pay_per_session')}
-                            className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
-                              bookingType === 'pay_per_session'
-                                ? 'bg-[#D91CD2] text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            }`}
-                          >
-                            <span className="block font-medium">{t('Pay Per Session')}</span>
-                            <span className="block text-xs sm:text-sm opacity-75 mt-1">
-                              CHF {course.totalPrice} ({course.sessions} {t('sessions')}))
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      <button
+                        onClick={() => setBookingType('pay_per_session')}
+                        className={`px-3 sm:px-4 py-3 rounded-lg text-sm sm:text-base transition-colors ${
+                          bookingType === 'pay_per_session'
+                            ? 'bg-[#D91CD2] text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        <span className="block font-medium">{t('Pay Per Session')}</span>
+                        <span className="block text-xs sm:text-sm opacity-75 mt-1">
+                          CHF {course.totalPrice} ({course.sessions} {t('sessions')}))
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                    <button
-                      onClick={handleBookCourse}
-                      disabled={
-                        course.currentStudents >= course.maxStudents ||
-                        (bookingType === 'tokens' && availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions))
-                      }
-                      className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
-                    >
-                      {course.currentStudents >= course.maxStudents 
-                        ? t('Fully Booked')
-                        : bookingType === 'tokens' && availableTokenPackages.length > 0
-                          ? `${t('Book with Tokens')} (${course.sessions} ${t('tokens needed')})`
-                          : `${t('Book Now')} - CHF ${course.totalPrice}`
-                      }
-                    </button>
+                <button
+                  onClick={handleBookCourse}
+                  disabled={
+                    course.currentStudents >= course.maxStudents ||
+                    (bookingType === 'tokens' && availableTokenPackages.every(pkg => pkg.remainingTokens < course.sessions))
+                  }
+                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
+                >
+                  {course.currentStudents >= course.maxStudents 
+                    ? t('Fully Booked')
+                      : bookingType === 'tokens' && availableTokenPackages.length > 0
+                        ? `${t('Book with Tokens')} (${course.sessions} ${t('tokens needed')})`
+                        : `${t('Book Now')} - CHF ${course.totalPrice}`
+                  }
+                </button>
                   </>
                 )}
 
@@ -1406,7 +1408,7 @@ export default function CourseDetail() {
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-white font-medium">
-                                  {scheduleDate.toLocaleDateString('en-US', { 
+                                  {scheduleDate.toLocaleDateString('fr-FR', { 
                                     weekday: 'long', 
                                     year: 'numeric', 
                                     month: 'long', 
@@ -1414,12 +1416,14 @@ export default function CourseDetail() {
                                   })}
                                 </p>
                                 <p className="text-gray-400 text-sm mt-1">
-                                  {scheduleDate.toLocaleTimeString('en-US', { 
+                                  {scheduleDate.toLocaleTimeString('fr-FR', { 
                                     hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  })} - {endTime.toLocaleTimeString('en-US', { 
+                                    minute: '2-digit',
+                                    hour12: false
+                                  })} - {endTime.toLocaleTimeString('fr-FR', { 
                                     hour: '2-digit', 
-                                    minute: '2-digit' 
+                                    minute: '2-digit',
+                                    hour12: false
                                   })}
                                 </p>
                               </div>

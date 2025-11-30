@@ -136,16 +136,16 @@ export default function PaymentSuccess() {
       // Send notifications
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}". Your coach will contact you soon.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}". Votre coach vous contactera bientôt.`,
         type: 'booking',
         read: false
       });
 
       await notificationService.create({
         userId: course.coachId,
-        title: 'New Course Booking!',
-        message: `${user.firstName} ${user.lastName} has booked your course "${course.title}". Payment method: ${paymentMethod}. Check your dashboard for details.`,
+        title: 'Nouvelle réservation de cours!',
+        message: `${user.firstName} ${user.lastName} a réservé votre cours "${course.title}". Méthode de paiement: ${paymentMethod}. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });

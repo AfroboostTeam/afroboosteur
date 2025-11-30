@@ -202,21 +202,29 @@ export default function SimplifiedDiscountCardModal({
       const startTime = schedule.startTime instanceof Date 
         ? schedule.startTime 
         : (schedule.startTime as any)?.toDate?.() || new Date();
+      const endTime = schedule.endTime instanceof Date 
+        ? schedule.endTime 
+        : (schedule.endTime as any)?.toDate?.() || new Date();
       
-      const dayName = startTime.toLocaleDateString('en-US', { weekday: 'long' });
-      const timeStr = startTime.toLocaleTimeString('en-US', { 
+      const dayName = startTime.toLocaleDateString('fr-FR', { weekday: 'long' });
+      const startTimeStr = startTime.toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+      const endTimeStr = endTime.toLocaleTimeString('fr-FR', { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: false 
       });
       
-      const slotKey = `${dayName}-${timeStr}`;
+      const slotKey = `${dayName}-${startTimeStr}-${endTimeStr}`;
       const slotId = schedule.id;
       
       if (!slotsMap.has(slotKey)) {
         slotsMap.set(slotKey, {
           id: slotId,
-          label: `${dayName} – ${timeStr}`,
+          label: `${dayName} – ${startTimeStr} - ${endTimeStr}`,
           schedule
         });
       }
@@ -224,10 +232,10 @@ export default function SimplifiedDiscountCardModal({
     
     return Array.from(slotsMap.values()).sort((a, b) => {
       // Sort by day of week, then by time
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const dayA = days.indexOf(a.label.split(' – ')[0]);
       const dayB = days.indexOf(b.label.split(' – ')[0]);
-      if (dayA !== dayB) return dayA - dayB;
+      if (dayA !== dayB && dayA !== -1 && dayB !== -1) return dayA - dayB;
       return a.label.localeCompare(b.label);
     });
   };
@@ -420,7 +428,7 @@ export default function SimplifiedDiscountCardModal({
           {selectedCourse && timeSlots.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                {t('Recurring Schedule')} <span className="text-red-400">*</span>
+                {t('Reschedule Class')} <span className="text-red-400">*</span>
               </label>
               <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                 {timeSlots.map((slot) => (

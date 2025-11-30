@@ -2501,5 +2501,22 @@
   "Flexible scheduling": "Planification flexible",
   "With discount card": "Avec carte membre",
   "Without discount card": "Sans carte membre",
-  "I already have a discount card": "J'ai déjà une carte membre"
+  "I already have a discount card": "J'ai déjà une carte membre",
+  "Choose your next session": "Choisissez votre prochaine session",
+  "Reserve helmet": "Réserver un casque",
+  "Select a date first": "Sélectionnez d'abord une date",
+  "Select a date to reserve with your subscription": "Sélectionnez une date pour réserver avec votre abonnement",
+  "You have an active subscription": "Vous avez un abonnement actif",
+  "Helmet Already Reserved": "Casque déjà réservé",
+  "No upcoming sessions available": "Aucune session à venir disponible",
+  "Reserved": "Réservé",
+  "Course Booked Successfully!": "Cours réservé avec succès!",
+  "New Course Booking!": "Nouvelle réservation de cours!",
+  "Start Time": "Heure de début",
+  "End Time": "Heure de fin",
+  "Reschedule Class": "Reprogrammer le cours",
+  "Recurring Schedule": "Planification récurrente",
+  "Start Date": "Date de début",
+  "End Date": "Date de fin",
+  "Schedules will be created for selected days between start and end date with the same time slot": "Les horaires seront créés pour les jours sélectionnés entre la date de début et la date de fin avec le même créneau horaire"
 }

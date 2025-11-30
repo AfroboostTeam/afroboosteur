@@ -82,35 +82,35 @@ export async function POST(request: NextRequest) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Helmet Reserved!</h1>
+            <h1>🎉 Casque réservé!</h1>
           </div>
           <div class="content">
-            <p>Hi <strong>${userName}</strong>,</p>
-            <p>Your helmet has been successfully reserved for the following class:</p>
+            <p>Bonjour <strong>${userName}</strong>,</p>
+            <p>Votre casque a été réservé avec succès pour le cours suivant:</p>
             
             <div class="details">
-              <p><strong>Course:</strong> ${courseName}</p>
+              <p><strong>Cours:</strong> ${courseName}</p>
               <p><strong>Date:</strong> ${classDate}</p>
-              ${classTime ? `<p><strong>Time:</strong> ${classTime}</p>` : ''}
-              ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+              ${classTime ? `<p><strong>Heure:</strong> ${classTime}</p>` : ''}
+              ${location ? `<p><strong>Lieu:</strong> ${location}</p>` : ''}
             </div>
 
             ${qrCodeImage ? `
             <div class="qr-section">
-              <h3 style="color: #D91CD2; margin-bottom: 15px;">Your QR Code</h3>
+              <h3 style="color: #D91CD2; margin-bottom: 15px;">Votre code QR</h3>
               <img src="${qrCodeImage}" alt="QR Code" />
               <p style="margin-top: 15px; color: #666; font-size: 14px;">
-                Show this QR code at the entrance to check in
+                Montrez ce code QR à l'entrée pour vous enregistrer
               </p>
             </div>
             ` : ''}
 
             <p style="margin-top: 30px;">
-              <strong>Important:</strong> Please arrive 10 minutes early and have your QR code ready for scanning.
+              <strong>Important:</strong> Veuillez arriver 10 minutes à l'avance et avoir votre code QR prêt à être scanné.
             </p>
             
-            <p>See you at the class!</p>
-            <p>The AfroBoost Team</p>
+            <p>À bientôt au cours!</p>
+            <p>L'équipe AfroBoost</p>
           </div>
           <div class="footer">
             <p>This email was sent from <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://afroboost.com'}">AfroBoost</a></p>
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         address: emailConfig.auth.user
       },
       to: userEmail,
-      subject: `Helmet Reserved - ${courseName}`,
+      subject: `Casque réservé - ${courseName}`,
       html: htmlContent
     });
 

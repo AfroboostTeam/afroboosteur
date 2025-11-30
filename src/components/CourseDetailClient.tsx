@@ -382,8 +382,8 @@ export default function CourseDetailClient() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}" using ${course.sessions} tokens from your ${tokenPackage.packageName} package.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}" en utilisant ${course.sessions} jetons de votre pack ${tokenPackage.packageName}.`,
         type: 'booking',
         read: false
       });
@@ -431,8 +431,8 @@ export default function CourseDetailClient() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}" using your subscription. Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}" en utilisant votre abonnement. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -500,8 +500,8 @@ export default function CourseDetailClient() {
       // Send notification
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}". Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}". Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -509,8 +509,8 @@ export default function CourseDetailClient() {
       // Send notification to coach
       await notificationService.create({
         userId: course.coachId,
-        title: 'New Course Booking!',
-        message: `${user.firstName} ${user.lastName} has booked your course "${course.title}". Payment method: ${user.credits >= course.price ? 'Credits' : 'Card'}. Check your dashboard for details.`,
+        title: 'Nouvelle réservation de cours!',
+        message: `${user.firstName} ${user.lastName} a réservé votre cours "${course.title}". Méthode de paiement: ${user.credits >= course.price ? 'Crédits' : 'Carte'}. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -610,8 +610,8 @@ export default function CourseDetailClient() {
       // Send notification to student
       await notificationService.create({
         userId: user.id,
-        title: 'Course Booked Successfully!',
-        message: `You have successfully booked "${course.title}". Check your dashboard for details.`,
+        title: 'Cours réservé avec succès!',
+        message: `Vous avez réservé "${course.title}". Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });
@@ -619,8 +619,8 @@ export default function CourseDetailClient() {
       // Send notification to coach
       await notificationService.create({
         userId: course.coachId,
-        title: 'New Course Booking!',
-        message: `${user.firstName} ${user.lastName} has booked your course "${course.title}" via ${method === 'credits' ? 'Credits' : method}. Check your dashboard for details.`,
+        title: 'Nouvelle réservation de cours!',
+        message: `${user.firstName} ${user.lastName} a réservé votre cours "${course.title}" via ${method === 'credits' ? 'Crédits' : method}. Consultez votre tableau de bord pour plus de détails.`,
         type: 'booking',
         read: false
       });

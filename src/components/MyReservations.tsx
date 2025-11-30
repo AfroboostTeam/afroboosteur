@@ -229,7 +229,7 @@ export default function MyReservations({ userId }: MyReservationsProps) {
                       <div className="flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">{t('Time')}</p>
                         <p className="text-white font-medium">
-                          {startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          {startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })} - {endTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false })}
                         </p>
                       </div>
                     </div>

@@ -102,11 +102,40 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
     price: 0,
     repeatDays: []
   });
+  
+  // Separate state for date and time inputs
+  const [scheduleDate, setScheduleDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>(''); // End date for recurring schedules
+  const [startTimeInput, setStartTimeInput] = useState<string>('');
+  const [endTimeInput, setEndTimeInput] = useState<string>('');
+  
+  // Helper function to combine date and time into a Date object
+  const combineDateAndTime = (dateStr: string, timeStr: string): Date => {
+    if (!dateStr || !timeStr) return new Date();
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date(dateStr);
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
 
   useEffect(() => {
     loadData();
   }, [user]);
-
+  
+  // Initialize date and time inputs when modal opens for new schedule
+  useEffect(() => {
+    if (isModalOpen && !editingSchedule && !scheduleDate) {
+      const now = new Date();
+      const defaultEndDate = new Date(now);
+      defaultEndDate.setMonth(defaultEndDate.getMonth() + 3); // Default to 3 months later
+      setScheduleDate(now.toISOString().split('T')[0]);
+      setEndDate(defaultEndDate.toISOString().split('T')[0]);
+      setStartTimeInput(now.toTimeString().slice(0, 5));
+      const endTime = new Date(now.getTime() + 60 * 60 * 1000); // Default to 1 hour later
+      setEndTimeInput(endTime.toTimeString().slice(0, 5));
+    }
+  }, [isModalOpen, editingSchedule]);
+  
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -297,6 +326,35 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
   const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Validate date and time inputs
+    if (!scheduleDate || !startTimeInput || !endTimeInput) {
+      alert(t('Please fill in all date and time fields') || 'Please fill in all date and time fields');
+      return;
+    }
+    
+    // Validate end date if recurring schedules are selected
+    if (formData.repeatDays && formData.repeatDays.length > 0) {
+      if (!endDate) {
+        alert(t('Please select an end date for recurring schedules') || 'Please select an end date for recurring schedules');
+        return;
+      }
+      
+      if (new Date(endDate) < new Date(scheduleDate)) {
+        alert(t('End date must be after start date') || 'End date must be after start date');
+        return;
+      }
+    }
+    
+    // Combine date and time into Date objects
+    const combinedStartTime = combineDateAndTime(scheduleDate, startTimeInput);
+    const combinedEndTime = combineDateAndTime(scheduleDate, endTimeInput);
+    
+    // Validate that end time is after start time
+    if (combinedEndTime <= combinedStartTime) {
+      alert('End time must be after start time');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -308,8 +366,8 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
         const scheduleData = {
           courseId: formData.courseId,
           title: course.title,
-          startTime: formData.startTime,
-          endTime: formData.endTime,
+          startTime: combinedStartTime,
+          endTime: combinedEndTime,
           level: formData.level,
           location: formData.location,
           description: formData.description,
@@ -321,77 +379,113 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
         if (formData.repeatDays && formData.repeatDays.length > 0) {
           // Create recurring schedules
           const schedulesToCreate = [];
-          const startDate = new Date(formData.startTime);
-          const endDate = new Date(formData.endTime);
 
-          // Calculate the time difference to maintain duration
-          const duration = endDate.getTime() - startDate.getTime();
+          // Get the time components from the combined dates
+          const startHours = combinedStartTime.getHours();
+          const startMinutes = combinedStartTime.getMinutes();
+          const endHours = combinedEndTime.getHours();
+          const endMinutes = combinedEndTime.getMinutes();
 
-          // Get the time components from the original dates
-          const startHours = startDate.getHours();
-          const startMinutes = startDate.getMinutes();
-          const endHours = endDate.getHours();
-          const endMinutes = endDate.getMinutes();
+          // Use date range from form inputs (endDate is the state variable, not a local variable)
+          if (!scheduleDate || !endDate) {
+            throw new Error('Start date and end date are required for recurring schedules');
+          }
 
-          // Find all dates within a reasonable range (e.g., next 12 weeks)
-          const weeksToSchedule = 12;
+          const startDateObj = new Date(scheduleDate);
+          startDateObj.setHours(0, 0, 0, 0);
+          const endDateObj = new Date(endDate); // Use the state variable endDate (string)
+          endDateObj.setHours(23, 59, 59, 999);
+
+          // Validate date range
+          if (endDateObj < startDateObj) {
+            throw new Error('End date must be after start date');
+          }
+
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          for (let week = 0; week < weeksToSchedule; week++) {
-            for (const dayOfWeek of formData.repeatDays) {
-              const scheduleDate = new Date(today);
-              scheduleDate.setDate(today.getDate() + (week * 7) + (dayOfWeek - today.getDay() + 7) % 7);
-
+          // Generate schedules for each selected day within the date range
+          const currentDate = new Date(startDateObj);
+          
+          console.log('Generating schedules from', startDateObj, 'to', endDateObj);
+          console.log('Selected repeat days:', formData.repeatDays);
+          console.log('Start time:', startHours, ':', startMinutes);
+          console.log('End time:', endHours, ':', endMinutes);
+          
+          while (currentDate <= endDateObj) {
+            const dayOfWeek = currentDate.getDay();
+            
+            // Check if this day is in the selected repeat days
+            if (formData.repeatDays.includes(dayOfWeek)) {
               // Skip if the date is in the past
-              if (scheduleDate < today) continue;
+              if (currentDate >= today) {
+                // Create start and end times for this occurrence
+                const occurrenceStart = new Date(currentDate);
+                occurrenceStart.setHours(startHours, startMinutes, 0, 0);
 
-              // Create start and end times for this occurrence
-              const occurrenceStart = new Date(scheduleDate);
-              occurrenceStart.setHours(startHours, startMinutes, 0, 0);
+                const occurrenceEnd = new Date(currentDate);
+                occurrenceEnd.setHours(endHours, endMinutes, 0, 0);
 
-              const occurrenceEnd = new Date(scheduleDate);
-              occurrenceEnd.setHours(endHours, endMinutes, 0, 0);
-
-              schedulesToCreate.push({
-                courseId: formData.courseId,
-                title: course.title,
-                startTime: occurrenceStart,
-                endTime: occurrenceEnd,
-                level: formData.level,
-                location: formData.location,
-                description: formData.description,
-                createdBy: user.id
-              });
+                schedulesToCreate.push({
+                  courseId: formData.courseId,
+                  title: course.title,
+                  startTime: occurrenceStart,
+                  endTime: occurrenceEnd,
+                  level: formData.level,
+                  location: formData.location,
+                  description: formData.description,
+                  createdBy: user.id
+                });
+              }
             }
+            
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
           }
+          
+          console.log(`Generated ${schedulesToCreate.length} schedules to create`);
 
           // Create all schedules
+          console.log(`Creating ${schedulesToCreate.length} recurring schedules...`);
           for (const scheduleData of schedulesToCreate) {
-            await scheduleService.create(scheduleData);
+            try {
+              await scheduleService.create(scheduleData);
+              console.log('Schedule created:', scheduleData);
+            } catch (err) {
+              console.error('Error creating individual schedule:', err, scheduleData);
+              throw err;
+            }
           }
+          console.log(`Successfully created ${schedulesToCreate.length} schedules`);
         } else {
           // Create single schedule
           const scheduleData = {
             courseId: formData.courseId,
             title: course.title,
-            startTime: formData.startTime,
-            endTime: formData.endTime,
+            startTime: combinedStartTime,
+            endTime: combinedEndTime,
             level: formData.level,
             location: formData.location,
             description: formData.description,
             createdBy: user.id
           };
+          console.log('Creating single schedule:', scheduleData);
           await scheduleService.create(scheduleData);
+          console.log('Single schedule created successfully');
         }
       }
 
+      console.log('Reloading data...');
       await loadData();
+      console.log('Data reloaded successfully');
+      
       setIsModalOpen(false);
       setEditingSchedule(null);
       resetForm();
     } catch (error) {
       console.error('Error saving schedule:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      alert(`Error creating schedule: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -399,16 +493,25 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
   const handleEditSchedule = (schedule: CourseSchedule) => {
     setEditingSchedule(schedule);
+    const startTime = schedule.startTime instanceof Date ? schedule.startTime : schedule.startTime.toDate();
+    const endTime = schedule.endTime instanceof Date ? schedule.endTime : schedule.endTime.toDate();
+    
     setFormData({
       courseId: schedule.courseId,
-      startTime: schedule.startTime instanceof Date ? schedule.startTime : schedule.startTime.toDate(),
-      endTime: schedule.endTime instanceof Date ? schedule.endTime : schedule.endTime.toDate(),
+      startTime: startTime,
+      endTime: endTime,
       level: schedule.level,
       location: schedule.location || '',
       description: schedule.description || '',
       maxParticipants: (schedule as any).maxParticipants || 15,
       price: (schedule as any).price || 0
     });
+    
+    // Set separate date and time inputs
+    setScheduleDate(startTime.toISOString().split('T')[0]);
+    setStartTimeInput(startTime.toTimeString().slice(0, 5));
+    setEndTimeInput(endTime.toTimeString().slice(0, 5));
+    
     setIsModalOpen(true);
   };
 
@@ -604,10 +707,11 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
   };
 
   const resetForm = () => {
+    const now = new Date();
     setFormData({
       courseId: '',
-      startTime: new Date(),
-      endTime: new Date(),
+      startTime: now,
+      endTime: new Date(now.getTime() + 60 * 60 * 1000), // Default to 1 hour later
       level: 'all',
       location: '',
       description: '',
@@ -615,6 +719,20 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
       price: 0,
       repeatDays: []
     });
+    
+    // Reset separate date and time inputs
+    const dateStr = now.toISOString().split('T')[0];
+    const defaultEndDate = new Date(now);
+    defaultEndDate.setMonth(defaultEndDate.getMonth() + 3); // Default to 3 months later
+    const endDateStr = defaultEndDate.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().slice(0, 5);
+    const endTime = new Date(now.getTime() + 60 * 60 * 1000);
+    const endTimeStr = endTime.toTimeString().slice(0, 5);
+    
+    setScheduleDate(dateStr);
+    setEndDate(endDateStr);
+    setStartTimeInput(timeStr);
+    setEndTimeInput(endTimeStr);
   };
 
   const categories = [
@@ -1398,24 +1516,89 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                   </select>
                 </div>
 
+                {/* Date Selection - Always show Start Date and End Date for new schedules */}
+                {!editingSchedule && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        {(!formData.repeatDays || formData.repeatDays.length === 0) ? t('Date') : t('Start Date')} *
+                      </label>
+                      <input
+                        type="date"
+                        value={scheduleDate}
+                        onChange={(e) => setScheduleDate(e.target.value)}
+                        required
+                        className="input-primary w-full text-white"
+                        style={{ colorScheme: "dark" }}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      {formData.repeatDays && formData.repeatDays.length > 0 && (
+                        <p className="text-xs text-purple-300 mt-1">
+                          {t('Classes will be scheduled from this date') || 'Classes will be scheduled from this date'}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        {t('End Date')} {formData.repeatDays && formData.repeatDays.length > 0 && <span className="text-red-400">*</span>}
+                      </label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        required={formData.repeatDays && formData.repeatDays.length > 0}
+                        className="input-primary w-full text-white"
+                        style={{ colorScheme: "dark" }}
+                        min={scheduleDate || new Date().toISOString().split('T')[0]}
+                      />
+                      {formData.repeatDays && formData.repeatDays.length > 0 ? (
+                        <p className="text-xs text-purple-300 mt-1">
+                          {t('Classes will be scheduled until this date') || 'Classes will be scheduled until this date'}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {t('Optional - only used for recurring schedules') || 'Optional - only used for recurring schedules'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {editingSchedule && (
+                  /* Single Date for editing existing schedule */
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-2">{t('Date')} *</label>
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      required
+                      className="input-primary w-full text-white"
+                      style={{ colorScheme: "dark" }}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                )}
+                
+                {/* Time Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">{t('startTime')}</label>
+                    <label className="block text-sm font-medium text-white mb-2">{t('Start Time')} *</label>
                     <input
-                      type="datetime-local"
-                      value={formData.startTime.toISOString().slice(0, 16)}
-                      onChange={(e) => setFormData(prev => ({ ...prev, startTime: new Date(e.target.value) }))}
+                      type="time"
+                      value={startTimeInput}
+                      onChange={(e) => setStartTimeInput(e.target.value)}
                       required
                       className="input-primary w-full text-white"
                       style={{ colorScheme: "dark" }}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">{t('endTime')}</label>
+                    <label className="block text-sm font-medium text-white mb-2">{t('End Time')} *</label>
                     <input
-                      type="datetime-local"
-                      value={formData.endTime.toISOString().slice(0, 16)}
-                      onChange={(e) => setFormData(prev => ({ ...prev, endTime: new Date(e.target.value) }))}
+                      type="time"
+                      value={endTimeInput}
+                      onChange={(e) => setEndTimeInput(e.target.value)}
                       required
                       className="input-primary w-full text-white"
                       style={{ colorScheme: "dark" }}
@@ -1444,6 +1627,7 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                     <label className="block text-sm font-medium text-white mb-2">
                       {t('repeat')} ({t('optional')})
                     </label>
+                    
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         {[
@@ -1483,9 +1667,11 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
                         ))}
                       </div>
                       {formData.repeatDays && formData.repeatDays.length > 0 && (
-                        <p className="text-xs text-gray-400 mt-2">
-                          {t('schedulesWillBeCreatedForNext12Weeks') || 'Schedules will be created for the next 12 weeks on selected days'}
-                        </p>
+                        <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mt-3">
+                          <p className="text-xs text-purple-300">
+                            {t('Schedules will be created for selected days between start and end date with the same time slot') || 'Schedules will be created for selected days between start and end date with the same time slot'}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
