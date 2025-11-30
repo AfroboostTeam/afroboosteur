@@ -83,7 +83,7 @@ export interface Course {
   updatedAt: DateOrTimestamp;
 }
 
-export type OfferPaymentMethod = 'credit_card' | 'twint' | 'gift_card' | 'discount_card';
+export type OfferPaymentMethod = 'credit_card' | 'paypal' | 'twint' | 'gift_card' | 'discount_card';
 
 export interface OfferOption {
   id: string;
@@ -113,6 +113,7 @@ export interface Offer {
   defaultOptionId?: string;
   sortOrder: number;
   isActive: boolean;
+  validityDays?: number; // Number of days the offer subscription is valid
   createdAt: DateOrTimestamp;
   updatedAt: DateOrTimestamp;
 }
@@ -237,6 +238,7 @@ export interface OfferPurchase {
   paymentMethod: 'stripe' | 'paypal' | 'twint' | 'credits' | 'gift-card' | 'discount-card';
   paymentReference?: string;
   status: 'pending' | 'completed' | 'failed';
+  expirationDate?: DateOrTimestamp; // When this offer purchase expires (calculated from offer validityDays)
   createdAt: DateOrTimestamp;
   updatedAt: DateOrTimestamp;
 }
@@ -361,7 +363,7 @@ export interface UserSubscription {
   endDate?: DateOrTimestamp; // for annual subscriptions
   status: 'active' | 'expired' | 'cancelled';
   paymentId: string;
-  paymentMethod: 'stripe' | 'paypal' | 'credits' | 'gift-card' | 'discount-card';
+  paymentMethod: 'stripe' | 'paypal' | 'twint' | 'credits' | 'gift-card' | 'discount-card';
   amount: number;
   createdAt: DateOrTimestamp;
   updatedAt: DateOrTimestamp;

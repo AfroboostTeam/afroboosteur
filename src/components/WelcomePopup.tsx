@@ -259,6 +259,16 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
       const { offer, option, amount } = activePurchase;
       const amountPaid = method === 'gift-card' || method === 'discount-card' ? 0 : amount;
 
+      // Calculate expiration date based on offer validity days (default to 30 days if not set)
+      const validityDays = offer.validityDays || 30;
+      const startDate = new Date();
+      // Create expiration date by adding validity days to start date
+      const expirationDate = new Date(startDate);
+      expirationDate.setDate(startDate.getDate() + validityDays);
+      // Set time to end of day (23:59:59) to ensure full day validity
+      expirationDate.setHours(23, 59, 59, 999);
+
+      // Create offer purchase with expiration date
       await offerPurchaseService.create({
         offerId: offer.id,
         offerTitle: offer.title,
@@ -270,7 +280,25 @@ export default function WelcomePopup({ isOpen, onClose }: WelcomePopupProps) {
         amountPaid,
         paymentMethod: method,
         paymentReference: paymentId,
-        status: 'completed'
+        status: 'completed',
+        expirationDate: expirationDate
+      });
+
+      // Create UserSubscription for the offer purchase
+      const { userSubscriptionService } = await import('@/lib/database');
+      const { Timestamp } = await import('firebase/firestore');
+      
+      await userSubscriptionService.create({
+        userId: user.id,
+        planId: offer.id,
+        planName: offer.title,
+        planType: 'annual', // Treat offer subscriptions as annual subscriptions with expiry
+        startDate: Timestamp.fromDate(startDate),
+        endDate: Timestamp.fromDate(expirationDate),
+        status: 'active',
+        paymentId: paymentId,
+        paymentMethod: method,
+        amount: amountPaid
       });
 
       if (amountPaid > 0) {

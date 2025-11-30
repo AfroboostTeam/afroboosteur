@@ -64,6 +64,7 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCard, setEditingCard] = useState<DiscountCard | null>(null);
   const [selectedCard, setSelectedCard] = useState<DiscountCard | null>(null);
+  const [duplicatingCardId, setDuplicatingCardId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'used'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchCourse, setSearchCourse] = useState('');
@@ -140,6 +141,36 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
       console.error('Error generating QR code:', error);
       throw error;
     }
+  };
+
+  // Wrapper function to adapt new format from SimplifiedDiscountCardModal to old format
+  const handleCreateCardWrapper = async (cardData: {
+    userId?: string;
+    userEmail?: string;
+    userName?: string;
+    courseId?: string;
+    recurringSchedule?: string[];
+    advantageType: 'free' | 'special_price' | 'percentage_discount';
+    value?: number;
+    expirationDate: string;
+    description?: string;
+  }) => {
+    // Transform to old format
+    const discountPercentage = cardData.advantageType === 'percentage_discount' 
+      ? (cardData.value || 0)
+      : 0;
+    
+    const oldFormatData = {
+      memberEmail: cardData.userEmail,
+      courseId: cardData.courseId,
+      discountPercentage,
+      expirationDate: cardData.expirationDate,
+      description: cardData.description || '',
+      maxUsage: 1, // Default to 1
+      cardType: cardData.courseId ? 'course' as const : 'student' as const,
+    };
+    
+    await handleCreateCard(oldFormatData);
   };
 
   const handleCreateCard = async (cardData: {
@@ -1092,7 +1123,7 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
             setShowCreateModal(false);
             setEditingCard(null);
           }}
-          onSubmit={editingCard ? handleUpdateCard : handleCreateCard}
+          onSubmit={editingCard ? handleUpdateCard : handleCreateCardWrapper}
           coachId={coachId}
           editingCard={editingCard || undefined}
         />

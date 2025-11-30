@@ -28,7 +28,8 @@ const CoachOffersPanel = () => {
     price: 0,
     buttonLabel: 'Select',
     emoji: '✨',
-    sortOrder: 0
+    sortOrder: 0,
+    validityDays: 30
   });
 
   const sortedOffers = useMemo(
@@ -205,7 +206,8 @@ const CoachOffersPanel = () => {
         price: 0,
         buttonLabel: 'Select',
         emoji: '✨',
-        sortOrder: 0
+        sortOrder: 0,
+        validityDays: 30
       });
 
       // Refresh offers
@@ -393,6 +395,20 @@ const CoachOffersPanel = () => {
                 />
               </div>
             </div>
+            <div>
+              <label className="text-sm text-gray-400">{t('Validity Period (Days)')}</label>
+              <input
+                type="number"
+                min="1"
+                value={offer.validityDays || ''}
+                onChange={(e) => handleOfferChange(offer.id, 'validityDays', e.target.value)}
+                placeholder="e.g., 30"
+                className="input-primary w-full mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {t('Number of days the subscription is valid after purchase')}
+              </p>
+            </div>
           </div>
 
           {offer.options?.length ? (
@@ -555,6 +571,21 @@ const CoachOffersPanel = () => {
                     className="input-primary w-full"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">{t('Validity Period (Days)')}</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newOffer.validityDays || ''}
+                  onChange={(e) => setNewOffer({ ...newOffer, validityDays: Number(e.target.value) || 30 })}
+                  placeholder="e.g., 30"
+                  className="input-primary w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('Number of days the subscription is valid after purchase')}
+                </p>
               </div>
             </div>
 

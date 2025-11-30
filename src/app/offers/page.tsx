@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { offerService, buildDefaultOffers, userSubscriptionService, offerPurchaseService } from '@/lib/database';
-import { Offer, OfferOption, UserSubscription } from '@/types';
+import { Offer, OfferOption, OfferPaymentMethod, UserSubscription } from '@/types';
 import PaymentHandlerWithCredits from '@/components/PaymentHandlerWithCredits';
 import DiscountCardScanner from '@/components/DiscountCardScanner';
 import Toast from '@/components/Toast';
+import { formatDate } from '@/lib/dateUtils';
 
 export default function OffersPage() {
   const { t } = useTranslation();
@@ -99,7 +100,7 @@ export default function OffersPage() {
     return activeOptions.find(option => option.id === optionId) || activeOptions[0];
   };
 
-  const getPaymentMethods = (offer: Offer, option?: OfferOption) => {
+  const getPaymentMethods = (offer: Offer, option?: OfferOption): OfferPaymentMethod[] => {
     const methods = option?.paymentMethods?.length ? option.paymentMethods : offer.paymentMethods;
     return Array.from(new Set(methods || []));
   };
@@ -149,17 +150,6 @@ export default function OffersPage() {
     } catch (error) {
       console.error('Error loading user purchases:', error);
     }
-  };
-
-  const mapAllowedPaymentMethods = (offer: Offer, option?: OfferOption) => {
-    const methods = getPaymentMethods(offer, option);
-    const mapped: Array<'stripe' | 'paypal' | 'twint' | 'gift-card' | 'discount-card'> = [];
-    if (methods.includes('credit_card')) mapped.push('stripe');
-    if (methods.includes('paypal')) mapped.push('paypal');
-    if (methods.includes('twint')) mapped.push('twint');
-    if (methods.includes('gift_card')) mapped.push('gift-card');
-    if (methods.includes('discount_card')) mapped.push('discount-card');
-    return mapped;
   };
 
   const openPayment = (offer: Offer) => {
@@ -273,6 +263,16 @@ export default function OffersPage() {
       // Import offerPurchaseService here to avoid circular dependencies
       const { offerPurchaseService, notificationService, transactionService } = await import('@/lib/database');
 
+      // Calculate expiration date based on offer validity days (default to 30 days if not set)
+      const validityDays = offer.validityDays || 30;
+      const startDate = new Date();
+      // Create expiration date by adding validity days to start date
+      const expirationDate = new Date(startDate);
+      expirationDate.setDate(startDate.getDate() + validityDays);
+      // Set time to end of day (23:59:59) to ensure full day validity
+      expirationDate.setHours(23, 59, 59, 999);
+
+      // Create offer purchase with expiration date
       await offerPurchaseService.create({
         offerId: offer.id,
         offerTitle: offer.title,
@@ -284,7 +284,25 @@ export default function OffersPage() {
         amountPaid,
         paymentMethod: method,
         paymentReference: paymentId,
-        status: 'completed'
+        status: 'completed',
+        expirationDate: expirationDate
+      });
+
+      // Create UserSubscription for the offer purchase
+      const { userSubscriptionService } = await import('@/lib/database');
+      const { Timestamp } = await import('firebase/firestore');
+      
+      await userSubscriptionService.create({
+        userId: user.id,
+        planId: offer.id,
+        planName: offer.title,
+        planType: 'annual', // Treat offer subscriptions as annual subscriptions with expiry
+        startDate: Timestamp.fromDate(startDate),
+        endDate: Timestamp.fromDate(expirationDate),
+        status: 'active',
+        paymentId: paymentId,
+        paymentMethod: method,
+        amount: amountPaid
       });
 
       if (amountPaid > 0) {
@@ -351,25 +369,13 @@ export default function OffersPage() {
   const isOfferActive = (offer: Offer): boolean => {
     if (!user) return false;
     
-    // Check if user has purchased this offer
+    // Check if user has purchased this specific offer (by offerId only - no fuzzy matching)
     const purchase = userPurchases.find(p => p.offerId === offer.id && p.status === 'completed');
     if (purchase) return true;
     
-    // Check if user has active subscription matching this offer
-    if (userSubscription) {
-      // Compare subscription plan name with offer title (case-insensitive, partial match)
-      const subscriptionName = userSubscription.planName?.toLowerCase() || '';
-      const offerTitle = offer.title.toLowerCase();
-      
-      // Check if subscription name contains offer title or vice versa
-      if (subscriptionName.includes(offerTitle) || offerTitle.includes(subscriptionName)) {
-        return true;
-      }
-      
-      // Also check if offer title contains subscription-related keywords
-      if (offerTitle.includes('subscription') && subscriptionName.includes('subscription')) {
-        return true;
-      }
+    // Check if user has active subscription matching this specific offer (by planId/offerId only)
+    if (userSubscription && userSubscription.planId === offer.id) {
+      return true;
     }
     
     return false;
@@ -439,7 +445,21 @@ export default function OffersPage() {
                     )}
                     {userSubscription.planType === 'annual' && userSubscription.endDate && (
                       <p className="text-green-400 text-xs mt-1">
-                        {t('Valid until')} {new Date(userSubscription.endDate instanceof Date ? userSubscription.endDate : (userSubscription.endDate as any).toDate()).toLocaleDateString()}
+                        {t('Valid until')} {(() => {
+                          let endDate: Date;
+                          if (userSubscription.endDate instanceof Date) {
+                            endDate = userSubscription.endDate;
+                          } else if (userSubscription.endDate && typeof (userSubscription.endDate as any).toDate === 'function') {
+                            endDate = (userSubscription.endDate as any).toDate();
+                          } else {
+                            endDate = new Date(userSubscription.endDate as any);
+                          }
+                          // Format as DD/MM/YYYY
+                          const day = String(endDate.getDate()).padStart(2, '0');
+                          const month = String(endDate.getMonth() + 1).padStart(2, '0');
+                          const year = endDate.getFullYear();
+                          return `${day}/${month}/${year}`;
+                        })()}
                       </p>
                     )}
                   </div>

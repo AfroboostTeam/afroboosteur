@@ -479,7 +479,27 @@ export const offerPurchaseService = {
   async hasActivePurchase(userId: string): Promise<boolean> {
     try {
       const purchases = await this.getByUser(userId);
-      return purchases.some(p => p.status === 'completed');
+      const now = new Date();
+      
+      return purchases.some(p => {
+        if (p.status !== 'completed') return false;
+        
+        // If expirationDate exists, check if it's still valid
+        if (p.expirationDate) {
+          let expirationDate: Date;
+          if (p.expirationDate instanceof Timestamp) {
+            expirationDate = p.expirationDate.toDate();
+          } else if (p.expirationDate instanceof Date) {
+            expirationDate = p.expirationDate;
+          } else {
+            expirationDate = new Date(p.expirationDate);
+          }
+          return expirationDate >= now;
+        }
+        
+        // If no expiration date, consider it active (legacy purchases)
+        return true;
+      });
     } catch (error) {
       console.error('Error checking offer purchases:', error);
       return false;

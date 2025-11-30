@@ -21,8 +21,8 @@ import {
 } from 'react-icons/fi';
 
 import { useAuth } from '@/lib/auth';
-import { Course, Review, StudentTokenPackage, CourseSchedule } from '@/types';
-import { courseService, reviewService, userSubscriptionService, studentTokenPackageService, userService, coachReferralActivityService, coachReferralStatsService, scheduleService, offerPurchaseService } from '@/lib/database';
+import { Course, Review, StudentTokenPackage, CourseSchedule, HelmetReservation } from '@/types';
+import { courseService, reviewService, userSubscriptionService, studentTokenPackageService, userService, coachReferralActivityService, coachReferralStatsService, scheduleService, offerPurchaseService, helmetReservationService } from '@/lib/database';
 import { checkUserSubscriptionStatus } from '@/lib/subscriptionUtils';
 import PaymentModal from '@/components/PaymentModal';
 import ReviewSystem from '@/components/ReviewSystem';
@@ -74,6 +74,8 @@ export default function CourseDetail() {
   const [showSubscriptionDatePicker, setShowSubscriptionDatePicker] = useState(false);
   const [selectedScheduleForBooking, setSelectedScheduleForBooking] = useState<CourseSchedule | null>(null);
   const [selectedDateForSubscription, setSelectedDateForSubscription] = useState<Date | null>(null);
+  const [userHelmetReservations, setUserHelmetReservations] = useState<HelmetReservation[]>([]);
+  const [isReservingHelmet, setIsReservingHelmet] = useState(false);
 
   useEffect(() => {
     loadCourseData();
@@ -87,8 +89,19 @@ export default function CourseDetail() {
       checkUserCourseStatus();
       loadUserSubscription(); // This checks both subscription and offer purchases
       loadUserTokenPackages();
+      loadUserHelmetReservations();
     }
   }, [user, course]);
+
+  const loadUserHelmetReservations = async () => {
+    if (!user?.id) return;
+    try {
+      const reservations = await helmetReservationService.getByUserId(user.id);
+      setUserHelmetReservations(reservations);
+    } catch (error) {
+      console.error('Error loading helmet reservations:', error);
+    }
+  };
 
 
   // Initialize tab from URL parameters and handle auto-booking
@@ -480,6 +493,7 @@ export default function CourseDetail() {
       alert(error instanceof Error ? error.message : 'Failed to book course');
     } finally {
       setIsLoading(false);
+      setIsReservingHelmet(false);
     }
   };
 
@@ -941,30 +955,47 @@ export default function CourseDetail() {
                               : (schedule.endTime as any).toDate();
                             const isSelected = selectedDateForSubscription?.getTime() === scheduleDate.getTime();
                             
+                            // Check if this schedule already has a reservation
+                            const hasReservation = userHelmetReservations.some(
+                              res => res.scheduleId === schedule.id && res.status !== 'cancelled'
+                            );
+                            
                             return (
                               <button
                                 key={schedule.id}
                                 onClick={() => {
-                                  setSelectedScheduleForBooking(schedule);
-                                  setSelectedDateForSubscription(scheduleDate);
+                                  if (!hasReservation) {
+                                    setSelectedScheduleForBooking(schedule);
+                                    setSelectedDateForSubscription(scheduleDate);
+                                  }
                                 }}
-                                disabled={isLoading || course.currentStudents >= course.maxStudents}
+                                disabled={isLoading || course.currentStudents >= course.maxStudents || hasReservation}
                                 className={`w-full p-4 rounded-lg transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${
-                                  isSelected
+                                  hasReservation
+                                    ? 'bg-green-900/30 border-2 border-green-500/50'
+                                    : isSelected
                                     ? 'bg-purple-600/20 border-2 border-purple-500'
                                     : 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-white font-medium">
-                                      {scheduleDate.toLocaleDateString('en-US', { 
-                                        weekday: 'long', 
-                                        year: 'numeric', 
-                                        month: 'long', 
-                                        day: 'numeric' 
-                                      })}
-                                    </p>
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2">
+                                      <p className="text-white font-medium">
+                                        {scheduleDate.toLocaleDateString('en-US', { 
+                                          weekday: 'long', 
+                                          year: 'numeric', 
+                                          month: 'long', 
+                                          day: 'numeric' 
+                                        })}
+                                      </p>
+                                      {hasReservation && (
+                                        <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full flex items-center space-x-1">
+                                          <FiCheckCircle size={12} />
+                                          <span>{t('Reserved')}</span>
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-gray-400 text-sm mt-1">
                                       {scheduleDate.toLocaleTimeString('en-US', { 
                                         hour: '2-digit', 
@@ -975,7 +1006,7 @@ export default function CourseDetail() {
                                       })}
                                     </p>
                                   </div>
-                                  <FiCalendar className={`${isSelected ? 'text-purple-400' : 'text-gray-400'}`} size={20} />
+                                  <FiCalendar className={`${hasReservation ? 'text-green-400' : isSelected ? 'text-purple-400' : 'text-gray-400'}`} size={20} />
                                 </div>
                               </button>
                             );
@@ -984,24 +1015,76 @@ export default function CourseDetail() {
                     )}
 
                     {/* Reserve helmet Button */}
-                    <button
-                      onClick={() => {
-                        if (selectedDateForSubscription && selectedScheduleForBooking) {
-                          bookWithSubscription(selectedDateForSubscription);
-                        } else {
-                          setShowSubscriptionDatePicker(true);
-                        }
-                      }}
-                      disabled={course.currentStudents >= course.maxStudents || (!selectedDateForSubscription && schedules.length === 0)}
-                      className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium"
-                    >
-                      {course.currentStudents >= course.maxStudents 
-                        ? t('Fully Booked')
-                        : !selectedDateForSubscription
-                          ? t('Select a date first')
-                          : t('Reserve helmet') || 'Reserve helmet'
+                    {(() => {
+                      const hasReservation = selectedScheduleForBooking && userHelmetReservations.some(
+                        res => res.scheduleId === selectedScheduleForBooking.id && res.status !== 'cancelled'
+                      );
+                      
+                      if (hasReservation) {
+                        return (
+                          <div className="w-full bg-green-500/20 border-2 border-green-500/50 rounded-lg py-3 sm:py-4 px-4 flex items-center justify-center space-x-2">
+                            <FiCheckCircle className="text-green-400" size={20} />
+                            <span className="text-green-400 font-medium text-sm sm:text-base">{t('Helmet Already Reserved')}</span>
+                          </div>
+                        );
                       }
-                    </button>
+                      
+                      return (
+                        <button
+                          onClick={async () => {
+                            if (selectedDateForSubscription && selectedScheduleForBooking) {
+                              setIsReservingHelmet(true);
+                              try {
+                                // Create the helmet reservation
+                                const reservationResponse = await fetch('/api/helmet-reservations/create', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ 
+                                    userId: user.id, 
+                                    scheduleId: selectedScheduleForBooking.id 
+                                  }),
+                                });
+                                
+                                const reservationData = await reservationResponse.json();
+                                
+                                if (reservationResponse.ok) {
+                                  showToast(t('Helmet Reserved!'), 'success');
+                                  await loadUserHelmetReservations();
+                                  // Don't create booking automatically - just reserve helmet
+                                } else {
+                                  showToast(reservationData.error || t('Failed to reserve helmet'), 'error');
+                                }
+                              } catch (error) {
+                                console.error('Helmet reservation error:', error);
+                                showToast(t('Failed to reserve helmet'), 'error');
+                              } finally {
+                                setIsReservingHelmet(false);
+                              }
+                            } else {
+                              setShowSubscriptionDatePicker(true);
+                            }
+                          }}
+                          disabled={course.currentStudents >= course.maxStudents || !selectedDateForSubscription || isReservingHelmet || !selectedScheduleForBooking}
+                          className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed py-3 sm:py-4 text-sm sm:text-base font-medium flex items-center justify-center space-x-2"
+                        >
+                          {isReservingHelmet ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>{t('Reserving...')}</span>
+                            </>
+                          ) : (
+                            <>
+                              {course.currentStudents >= course.maxStudents 
+                                ? t('Fully Booked')
+                                : !selectedDateForSubscription
+                                  ? t('Select a date first')
+                                  : t('Reserve helmet') || 'Reserve helmet'
+                              }
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </>
                 ) : (
                   <>
