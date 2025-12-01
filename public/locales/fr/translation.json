@@ -1134,6 +1134,11 @@
   "Reserve Helmet": "Réserver un casque",
   "Reserving...": "Réservation en cours...",
   "Helmet Reserved!": "Casque réservé!",
+  "Advantage Type": "Type d'avantage",
+  "Special Price": "Prix spécial",
+  "Percentage Discount": "Réduction en pourcentage",
+  "Special Price (CHF)": "Prix spécial (CHF)",
+  "Discount Percentage (%)": "Pourcentage de réduction (%)"
   "Scan QR Code": "Scanner le code QR",
   "Position the QR code within the frame": "Positionnez le code QR dans le cadre",
   "Scan Another": "Scanner un autre",
