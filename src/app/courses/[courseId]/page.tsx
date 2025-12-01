@@ -129,16 +129,55 @@ export default function CourseDetail() {
   }, [user, course]);
 
   const loadUserSubscription = async () => {
-    if (!user?.id) return;
+    // We need both the user and the current course to determine whether
+    // their subscription/offer applies to THIS specific coach/course.
+    if (!user?.id || !course) return;
     try {
       // Use the utility function that checks both subscription and offer purchases
       const status = await checkUserSubscriptionStatus(user.id);
       setUserSubscription(status.subscription);
-      setHasPurchasedOffer(status.hasPurchasedOffer);
       setHasActiveSubscription(status.hasActiveSubscription);
+
+      // Refine offer status: only consider offers that are valid for this coach.
+      let hasCoachOffer = false;
+      try {
+        const purchases = await offerPurchaseService.getByUser(user.id);
+        const now = new Date();
+
+        const getExpirationDate = (raw: any): Date | null => {
+          if (!raw) return null;
+          if (raw instanceof Date) return raw;
+          if (raw?.toDate && typeof raw.toDate === 'function') {
+            return raw.toDate();
+          }
+          if (typeof raw === 'object' && 'seconds' in raw) {
+            const seconds = (raw as { seconds: number }).seconds;
+            const nanos = (raw as { nanoseconds?: number }).nanoseconds ?? 0;
+            return new Date(seconds * 1000 + Math.floor(nanos / 1_000_000));
+          }
+          return new Date(raw);
+        };
+
+        hasCoachOffer = purchases.some((p: any) => {
+          if (p.status !== 'completed') return false;
+          // If the purchase is linked to a specific coach, it only applies to that coach
+          if (p.coachId && p.coachId !== course.coachId) return false;
+
+          const exp = getExpirationDate(p.expirationDate);
+          // If there's no expiration date, treat it as active (legacy behavior)
+          if (!exp) return true;
+          return exp >= now;
+        });
+      } catch (offerError) {
+        console.error('Error checking coach-specific offers:', offerError);
+      }
+
+      setHasPurchasedOffer(hasCoachOffer);
       
-      // Default to subscription booking if user has active subscription or purchased offer
-      if (status.hasActiveSubscription || status.hasPurchasedOffer) {
+      // Default to subscription booking only if user has:
+      // - a globally active subscription, OR
+      // - an active offer that matches this coach
+      if (status.hasActiveSubscription || hasCoachOffer) {
         setBookingType('subscription');
       } else {
         setBookingType('pay_per_session');
@@ -1079,8 +1118,8 @@ export default function CourseDetail() {
                               {course.currentStudents >= course.maxStudents 
                                 ? t('Fully Booked')
                                 : !selectedDateForSubscription
-                                  ? t('Select a date first')
-                                  : t('Reserve helmet') || 'Reserve helmet'
+                                  ? t('First, select a date')
+                                  : t('Reserve your helmet') || 'Reserve your helmet'
                               }
                             </>
                           )}

@@ -104,6 +104,13 @@ export default function MyReservations({ userId }: MyReservationsProps) {
     if (date?.toDate && typeof date.toDate === 'function') {
       return date.toDate();
     }
+    // Handle Firestore Timestamp objects that were serialized over the network
+    // and lost their prototype (shape: { seconds: number; nanoseconds: number })
+    if (typeof date === 'object' && date !== null && 'seconds' in date) {
+      const seconds = (date as { seconds: number }).seconds;
+      const nanos = (date as { nanoseconds?: number }).nanoseconds ?? 0;
+      return new Date(seconds * 1000 + Math.floor(nanos / 1_000_000));
+    }
     if (typeof date === 'string' || typeof date === 'number') {
       return new Date(date);
     }

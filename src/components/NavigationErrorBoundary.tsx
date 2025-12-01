@@ -20,6 +20,17 @@ class NavigationErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     console.error('Navigation Error Boundary caught an error:', error);
+
+    // Ignore known non-critical DOM errors that can occur during animations or
+    // clipboard fallbacks (they do not affect navigation or session state).
+    if (error.message.includes("Failed to execute 'removeChild' on 'Node'")) {
+      console.warn(
+        'Suppressed non-navigation DOM error in NavigationErrorBoundary:',
+        error.message
+      );
+      return { hasError: false };
+    }
+
     return { hasError: true, error };
   }
 
