@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
         // Return configuration for unsigned upload
         return NextResponse.json({
             cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-            uploadPreset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
-            apiKey: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY, // Optional for unsigned uploads
+            uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET,
+            apiKey: process.env.CLOUDINARY_API_KEY, // Optional for unsigned uploads
         });
     } catch (error) {
         console.error('Error getting Cloudinary config:', error);
