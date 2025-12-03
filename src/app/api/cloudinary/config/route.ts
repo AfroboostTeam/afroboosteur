@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
 
         // Validate that required environment variables are set
         if (
-            !process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+            !process.env.CLOUDINARY_CLOUD_NAME ||
             !process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
         ) {
             return NextResponse.json(
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
         // Return configuration for unsigned upload
         return NextResponse.json({
-            cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME,
             uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET,
             apiKey: process.env.CLOUDINARY_API_KEY, // Optional for unsigned uploads
         });
