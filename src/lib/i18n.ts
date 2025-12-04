@@ -15,8 +15,14 @@ i18n
   .init({
     fallbackLng: 'fr',
     lng: 'fr', // Set French as default language
-    debug: true,
+    debug: false, // Set to false to reduce console noise
     interpolation: { escapeValue: false },
+    detection: {
+      // Override browser language detection to prefer French
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage'],
+      lookupLocalStorage: 'i18nextLng',
+    },
     resources: {
       en: { translation: enTranslations },
       fr: { translation: frTranslations },

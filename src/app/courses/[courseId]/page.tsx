@@ -1120,8 +1120,8 @@ export default function CourseDetail() {
                               {course.currentStudents >= course.maxStudents 
                                 ? t('Fully Booked')
                                 : !selectedDateForSubscription
-                                  ? t('First, select a date')
-                                  : t('Reserve your helmet') || 'Reserve your helmet'
+                                  ? "D'abord, sélectionnez une date"
+                                  : "Réservez votre casque"
                               }
                             </>
                           )}
