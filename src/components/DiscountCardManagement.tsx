@@ -217,7 +217,8 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
             cardType: 'course' as const,
             advantageType: cardData.advantageType,
             specialPrice: cardData.advantageType === 'special_price' ? cardData.value : undefined,
-            courseSessions: courseSessions.length > 0 ? courseSessions : undefined,
+            // Convert array to Record format: { courseId: [sessionIds] }
+            courseSessions: courseSessions.length > 0 ? { [courseId]: courseSessions } : undefined,
           };
           return handleCreateCard(oldFormatData);
         });
