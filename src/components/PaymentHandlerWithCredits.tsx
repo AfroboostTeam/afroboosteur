@@ -247,7 +247,7 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
           isEnabled: true
         });
       }
-      
+      //a
       setPaymentMethods(methods);
       
       const availableMethods = methods.filter(m => m.isEnabled);
