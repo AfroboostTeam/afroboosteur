@@ -4068,6 +4068,79 @@ export const giftCardService = {
     });
   },
 
+  async validate(cardCode: string, amountToUse: number, customerId: string, customerName: string, businessId?: string, transactionType?: 'course' | 'product' | 'token') {
+    const card = await this.getByCardCode(cardCode);
+    
+    if (!card) {
+      throw new Error('Gift card not found');
+    }
+
+    if (!card.isActive) {
+      throw new Error('Gift card is not active');
+    }
+
+    if (card.isUsed && card.remainingAmount === 0) {
+      throw new Error('Gift card has been fully used');
+    }
+
+    // Enhanced validation: Check gift card type against transaction type
+    if (transactionType) {
+      const cardCodeUpper = cardCode.toUpperCase();
+
+      if (transactionType === 'course' || transactionType === 'token') {
+        // Course and token purchases require COACH gift cards
+        if (!cardCodeUpper.startsWith('COACH-')) {
+          throw new Error('This gift card can only be used for product purchases. Please use a COACH gift card for course and token purchases.');
+        }
+
+        // If businessId provided, ensure it matches the coach who issued the card
+        if (businessId && card.issuerId !== businessId) {
+          throw new Error(`This gift card can only be used with courses/tokens from ${card.businessName || card.issuerName}`);
+        }
+      } else if (transactionType === 'product') {
+        // Product purchases require SELLER gift cards
+        if (!cardCodeUpper.startsWith('SELLER-')) {
+          throw new Error('This gift card can only be used for course and token purchases. Please use a SELLER gift card for product purchases.');
+        }
+
+        // If businessId provided, ensure it matches the seller who issued the card
+        if (businessId && card.issuerId !== businessId) {
+          throw new Error(`This gift card can only be used with products from ${card.businessName || card.issuerName}`);
+        }
+      }
+    }
+
+    // Check if gift card belongs to the right business (legacy check for backward compatibility)
+    if (businessId && card.issuerId !== businessId && !transactionType) {
+      throw new Error(`This gift card can only be used with ${card.businessName || card.issuerName}`);
+    }
+
+    // Check expiration
+    const expirationDate = card.expirationDate instanceof Timestamp
+      ? card.expirationDate.toDate()
+      : new Date(card.expirationDate as any);
+
+    if (expirationDate < new Date()) {
+      throw new Error('Gift card has expired');
+    }
+
+    // Check if gift card has any balance
+    if (card.remainingAmount <= 0) {
+      throw new Error(`Gift card has no remaining balance. Available: ${card.remainingAmount}`);
+    }
+
+    // Allow partial payment - use whatever balance is available (up to the requested amount)
+    const actualAmountToUse = Math.min(card.remainingAmount, amountToUse);
+    
+    // Return validation result without modifying the card
+    return {
+      card,
+      amountAvailable: card.remainingAmount,
+      amountToUse: actualAmountToUse, // The amount that would be used (may be less than requested)
+      remainingAmountAfterUse: card.remainingAmount - actualAmountToUse
+    };
+  },
+
   async validateAndUse(cardCode: string, amountToUse: number, customerId: string, customerName: string, businessId?: string, orderId?: string, bookingId?: string, transactionType?: 'course' | 'product' | 'token') {
     const card = await this.getByCardCode(cardCode);
     console.log(businessId)
@@ -4124,12 +4197,16 @@ export const giftCardService = {
       throw new Error('Gift card has expired');
     }
 
-    if (card.remainingAmount < amountToUse) {
-      throw new Error(`Insufficient gift card balance. Available: ${card.remainingAmount}`);
+    // Check if gift card has any balance
+    if (card.remainingAmount <= 0) {
+      throw new Error(`Gift card has no remaining balance. Available: ${card.remainingAmount}`);
     }
 
+    // Allow partial payment - use whatever balance is available (up to the requested amount)
+    const actualAmountToUse = Math.min(card.remainingAmount, amountToUse);
+
     // Calculate new remaining amount
-    const newRemainingAmount = card.remainingAmount - amountToUse;
+    const newRemainingAmount = card.remainingAmount - actualAmountToUse;
     const isFullyUsed = newRemainingAmount === 0;
 
     // Update gift card
@@ -4156,14 +4233,14 @@ export const giftCardService = {
       customerName,
       orderId,
       bookingId,
-      amountUsed: amountToUse,
+      amountUsed: actualAmountToUse,
       transactionType: isFullyUsed ? 'redemption' : 'partial_redemption',
       createdAt: new Date()
     });
 
     return {
       card: { ...card, ...updateData },
-      amountUsed: amountToUse,
+      amountUsed: actualAmountToUse, // Return the actual amount used (may be less than requested)
       remainingAmount: newRemainingAmount
     };
   },

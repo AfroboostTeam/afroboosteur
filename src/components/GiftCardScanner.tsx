@@ -311,14 +311,69 @@ export default function GiftCardScanner({
       });
 
       const data = await response.json();
+      
+      console.log('🎁 Gift card validation API response:', data);
+      console.log('🔍 Checking data properties:', {
+        success: data.success,
+        valid: data.valid,
+        amount: data.amount,
+        amountToUse: data.amountToUse,
+        remainingAmount: data.remainingAmount,
+        amountAvailable: data.amountAvailable
+      });
 
-      if (response.ok && data.success) {
-        onValidation({
-          valid: true,
-          amount: data.amountUsed,
-          remainingAmount: data.remainingAmount,
-          cardCode
+      if (response.ok && data.success && data.valid) {
+        // Extract amount: prioritize amount, then amountToUse, then amountAvailable
+        // This ensures we always get the correct amount that will be deducted
+        let giftCardAmount = 0;
+        
+        // Try amount first (this should be the primary value from API)
+        if (data.amount !== undefined && data.amount !== null) {
+          const numAmount = Number(data.amount);
+          if (!isNaN(numAmount) && numAmount > 0) {
+            giftCardAmount = numAmount;
+            console.log('✅ Using data.amount:', giftCardAmount);
+          }
+        }
+        
+        // Fallback to amountToUse if amount is 0 or invalid
+        if (giftCardAmount === 0 && data.amountToUse !== undefined && data.amountToUse !== null) {
+          const numAmountToUse = Number(data.amountToUse);
+          if (!isNaN(numAmountToUse) && numAmountToUse > 0) {
+            giftCardAmount = numAmountToUse;
+            console.log('✅ Using data.amountToUse:', giftCardAmount);
+          }
+        }
+        
+        // Fallback to amountAvailable (partial payment) if both above are 0
+        if (giftCardAmount === 0 && data.amountAvailable !== undefined && data.amountAvailable !== null) {
+          const numAvailable = Number(data.amountAvailable);
+          if (!isNaN(numAvailable) && numAvailable > 0) {
+            giftCardAmount = Math.min(numAvailable, requestedAmount);
+            console.log('✅ Using data.amountAvailable:', giftCardAmount);
+          }
+        }
+        
+        console.log('💰 Final extracted gift card amount:', giftCardAmount, 'from data:', {
+          amount: data.amount,
+          amountType: typeof data.amount,
+          amountToUse: data.amountToUse,
+          amountAvailable: data.amountAvailable,
+          requestedAmount: requestedAmount
         });
+        
+        if (giftCardAmount === 0) {
+          console.error('❌ ERROR: Gift card amount is 0 after extraction!', data);
+        }
+        
+        const validationResult = {
+          valid: true,
+          amount: giftCardAmount,
+          remainingAmount: data.remainingAmount || 0,
+          cardCode
+        };
+        console.log('✅ Gift card validation result (final) - sending to onValidation:', validationResult);
+        onValidation(validationResult);
       } else {
         onValidation({
           valid: false,

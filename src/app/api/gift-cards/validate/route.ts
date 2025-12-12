@@ -28,24 +28,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate and use the gift card with transaction type
-    const result = await giftCardService.validateAndUse(
-      cardCode, 
-      amount, 
-      customerId, 
-      customerName,
+    // Validate the gift card (without using it - it will be used when payment is completed)
+    const result = await giftCardService.validate(
+      cardCode.trim().toUpperCase(), 
+      Number(amount), 
+      customerId.trim(), 
+      customerName.trim(),
       businessId,
-      orderId, 
-      bookingId,
       transactionType
     );
 
-
-    return NextResponse.json({
-      success: true,
-      message: 'Gift card validated and used successfully',
-      ...result
+    console.log('🔍 Gift card validation result:', {
+      amountToUse: result.amountToUse,
+      remainingAmountAfterUse: result.remainingAmountAfterUse,
+      amountAvailable: result.amountAvailable,
+      requestedAmount: Number(amount)
     });
+
+    const responseData = {
+      success: true,
+      valid: true,
+      message: 'Gift card validated successfully',
+      amount: result.amountToUse, // Amount that will be used
+      amountToUse: result.amountToUse, // Also include amountToUse for fallback
+      remainingAmount: result.remainingAmountAfterUse, // Remaining amount after use
+      amountAvailable: result.amountAvailable, // Current available balance
+      cardCode: cardCode.trim().toUpperCase()
+    };
+    
+    console.log('📤 Sending response:', responseData);
+    
+    return NextResponse.json(responseData);
 
   } catch (error: any) {
     console.error('Error validating gift card:', error);
@@ -58,8 +71,12 @@ export async function POST(request: NextRequest) {
         error.message.includes('balance') ||
         error.message.includes('can only be used with')) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
+        { 
+          success: false,
+          valid: false,
+          error: error.message 
+        },
+        { status: 200 } // Return 200 so frontend can handle it gracefully
       );
     }
 

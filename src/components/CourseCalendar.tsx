@@ -893,16 +893,16 @@ export default function CourseCalendar({ onBookCourse, showManagement = false }:
 
             {showManagement && user?.role === 'coach' && (
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => {
-                    resetForm();
-                    setIsModalOpen(true);
-                  }}
-                  className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
-                >
-                  <FiPlus size={20} />
-                  <span>{t('scheduleCourse')}</span>
-                </button>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }}
+                className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
+              >
+                <FiPlus size={20} />
+                <span>{t('scheduleCourse')}</span>
+              </button>
                 <button
                   onClick={() => setShowDeleteModal(true)}
                   className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto bg-red-600 hover:bg-red-700"

@@ -269,15 +269,15 @@ export default function DiscountCardManagement({ coachId }: DiscountCardManageme
   }) => {
     try {
       const requestBody: any = {
-        coachId,
-        title: cardData.title || `${cardData.discountPercentage}% Discount Card`,
-        description: cardData.description,
-        discountPercentage: cardData.discountPercentage,
-        userEmail: cardData.memberEmail,
-        courseId: cardData.courseId,
-        cardType: cardData.cardType,
-        expirationDate: cardData.expirationDate,
-        maxUsage: cardData.maxUsage,
+          coachId,
+          title: cardData.title || `${cardData.discountPercentage}% Discount Card`,
+          description: cardData.description,
+          discountPercentage: cardData.discountPercentage,
+          userEmail: cardData.memberEmail,
+          courseId: cardData.courseId,
+          cardType: cardData.cardType,
+          expirationDate: cardData.expirationDate,
+          maxUsage: cardData.maxUsage,
       };
       
       // Add courseSessions if provided

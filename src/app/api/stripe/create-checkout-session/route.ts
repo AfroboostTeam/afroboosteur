@@ -104,45 +104,45 @@ export async function POST(request: NextRequest) {
     ) => {
       return await stripe.checkout.sessions.create({
         payment_method_types: pmTypes,
-        mode: 'payment',
-        line_items: [
-          {
-            price_data: {
-              currency: currency.toLowerCase(),
-              product_data: { 
-                name: description || 'Payment',
-                description: `Payment for user ${userId}`
-              },
-              unit_amount: Math.round(amount * 100), // Convert to cents
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: { 
+              name: description || 'Payment',
+              description: `Payment for user ${userId}`
             },
-            quantity: 1,
+            unit_amount: Math.round(amount * 100), // Convert to cents
           },
-        ],
-        metadata: {
-          userId,
-          source: 'dance-platform',
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        userId,
+        source: 'dance-platform',
           paymentMethod: isFallback ? 'card' : paymentMethod,
           ...(isFallback && {
             originalPaymentMethod: paymentMethod,
             twintFallback: 'true'
           }),
-          // Purchase context
-          ...(purchaseContext && {
-            purchaseType: purchaseContext.type,
-            courseId: purchaseContext.courseId || '',
-            productId: purchaseContext.productId || '',
-            tokenPackageId: purchaseContext.tokenPackageId || '',
-            businessId: purchaseContext.businessId || '',
-            coachId: purchaseContext.coachId || '',
-            referralCode: purchaseContext.referralCode || '',
-            boostType: purchaseContext.boostType || '',
-            checkoutDataId: checkoutDataId
-          })
-        },
-        success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/payment/cancel`,
-        expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutes from now
-      });
+        // Purchase context
+        ...(purchaseContext && {
+          purchaseType: purchaseContext.type,
+          courseId: purchaseContext.courseId || '',
+          productId: purchaseContext.productId || '',
+          tokenPackageId: purchaseContext.tokenPackageId || '',
+          businessId: purchaseContext.businessId || '',
+          coachId: purchaseContext.coachId || '',
+          referralCode: purchaseContext.referralCode || '',
+          boostType: purchaseContext.boostType || '',
+          checkoutDataId: checkoutDataId
+        })
+      },
+      success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/payment/cancel`,
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutes from now
+    });
     };
 
     // Try to create checkout session, fallback to card-only if TWINT fails

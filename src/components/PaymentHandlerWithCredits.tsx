@@ -89,12 +89,29 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
     setIsProcessing: setConfirmationProcessing,
   } = usePurchaseConfirmation();
 
+  // Debug: Log giftCardResult whenever it changes
+  useEffect(() => {
+    if (giftCardResult) {
+      console.log('🔍 giftCardResult state changed:', giftCardResult);
+      console.log('🔍 giftCardResult.amount:', giftCardResult.amount, 'type:', typeof giftCardResult.amount);
+    }
+  }, [giftCardResult]);
+
   useEffect(() => {
     if (props.isOpen) {
+      // Initialize discountedAmount when modal opens (if no cards applied yet)
+      if (!discountCardResult && !giftCardResult) {
+        setDiscountedAmount(props.amount);
+      }
       loadPaymentSettings();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.isOpen, user, discountedAmount, props.allowedPaymentMethods]);
+  }, [props.isOpen, user, props.allowedPaymentMethods]);
+  
+  // Debug: Log discountedAmount whenever it changes
+  useEffect(() => {
+    console.log('🔍 discountedAmount state changed:', discountedAmount, 'props.amount:', props.amount);
+  }, [discountedAmount, props.amount]);
 
   // Auto-validate pre-applied cards from Step 1
   useEffect(() => {
@@ -109,23 +126,54 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
   }, [props.isOpen, props.preAppliedGiftCardCode, props.preAppliedDiscountCardCode]);
 
   const validatePreAppliedGiftCard = async (cardCode: string) => {
+    if (!user) return;
+    
     try {
+      // Use the current discounted amount (after discount card if applied)
+      const currentAmount = discountCardResult?.finalAmount || props.amount;
+      
       const response = await fetch('/api/gift-cards/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cardCode,
+          amount: currentAmount,
           customerId: props.userId,
+          customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Customer',
           businessId: props.businessId,
           orderId: props.orderId,
-          requestedAmount: props.amount,
           transactionType: props.transactionType
         })
       });
 
-      const result = await response.json();
-      if (result.valid) {
+      const data = await response.json();
+      console.log('🎁 Pre-applied gift card API response:', data);
+      
+      if (response.ok && data.success && data.valid) {
+        // Extract amount: use amount if available, otherwise use amountToUse, otherwise use amountAvailable
+        let giftCardAmount = 0;
+        if (data.amount !== undefined && data.amount !== null) {
+          giftCardAmount = Number(data.amount);
+        } else if (data.amountToUse !== undefined && data.amountToUse !== null) {
+          giftCardAmount = Number(data.amountToUse);
+        } else if (data.amountAvailable !== undefined && data.amountAvailable !== null) {
+          // If partial payment, use the available amount (up to requested amount)
+          giftCardAmount = Math.min(Number(data.amountAvailable), currentAmount);
+        }
+        
+        const result = {
+          valid: true,
+          amount: giftCardAmount, // Amount that will be used from gift card
+          remainingAmount: data.remainingAmount || 0,
+          cardCode: cardCode
+        };
+        console.log('✅ Pre-applied gift card result (final):', result);
         setGiftCardResult(result);
+        
+        // Update discounted amount (same logic as handleGiftCardValidation)
+        const newAmount = Math.max(0, currentAmount - giftCardAmount);
+        setDiscountedAmount(newAmount);
+        console.log('✅ Pre-applied gift card: Updated discountedAmount to:', newAmount);
       }
     } catch (error) {
       console.error('Error validating pre-applied gift card:', error);
@@ -157,6 +205,8 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
   };
 
   const isMethodAllowed = (methodId: PaymentMethod['id']) => {
+    // Never allow gift-card in payment methods list (it should be applied before reaching payment step)
+    if (methodId === 'gift-card') return false;
     // If no restrictions specified, allow all methods (like in course booking)
     if (!props.allowedPaymentMethods || props.allowedPaymentMethods.length === 0) return true;
     // Otherwise check if method is in allowed list
@@ -230,14 +280,6 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
         });
       }
 
-      // Gift Card - Always available for all offers and courses
-      methods.push({
-        id: 'gift-card',
-        name: t('Use a gift card to pay for this purchase'),
-        icon: <FiGift size={24} />,
-        isEnabled: true
-      });
-
       // Discount Card - Always available when coachId is provided
       if (props.coachId) {
         methods.push({
@@ -248,9 +290,11 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
         });
         }
        
-        setPaymentMethods(methods);
+        // Filter out gift-card method (should not be shown in payment methods list)
+        const filteredMethods = methods.filter(m => m.id !== 'gift-card');
+        setPaymentMethods(filteredMethods);
       
-      const availableMethods = methods.filter(m => m.isEnabled);
+      const availableMethods = filteredMethods.filter(m => m.isEnabled);
       
       // If no methods are available, check if it's because of restrictions
       if (availableMethods.length === 0) {
@@ -349,8 +393,36 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
     }
   };
 
-  const handlePaymentSuccess = (paymentId: string) => {
+  const handlePaymentSuccess = async (paymentId: string) => {
     if (selectedMethod && selectedMethod !== 'credits') {
+      // Use gift card if one was applied (only when payment is successful)
+      if (giftCardResult && giftCardResult.valid && giftCardResult.cardCode && user) {
+        try {
+          const useResponse = await fetch('/api/gift-cards/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cardCode: giftCardResult.cardCode,
+              amount: giftCardResult.amount,
+              customerId: user.id,
+              customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Customer',
+              businessId: props.businessId,
+              orderId: props.orderId,
+              bookingId: undefined,
+              transactionType: props.transactionType
+            })
+          });
+          
+          if (!useResponse.ok) {
+            console.error('Failed to use gift card:', await useResponse.json());
+            // Continue with payment even if gift card use fails (it was already validated)
+          }
+        } catch (error) {
+          console.error('Error using gift card:', error);
+          // Continue with payment even if gift card use fails
+        }
+      }
+      
       setIsProcessingPayment(false);
       hideConfirmation();
       props.onSuccess(paymentId, selectedMethod, referralValidated && referralCode ? referralCode : undefined);
@@ -410,16 +482,165 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
       return; // Prevent double processing
     }
 
-    setGiftCardResult(result);
+    console.log('🎁 Gift card validation result received:', result);
+    console.log('🔍 Gift card result details:', {
+      valid: result.valid,
+      amount: result.amount,
+      remainingAmount: result.remainingAmount,
+      cardCode: result.cardCode,
+      amountType: typeof result.amount,
+      amountIsNaN: isNaN(Number(result.amount))
+    });
+    
+    // SIMPLIFIED: Use result.amount directly - it should already be a valid number from GiftCardScanner
+    // Only normalize if it's not already a valid number
+    let giftCardAmount = 0;
+    
+    if (result.amount !== undefined && result.amount !== null) {
+      if (typeof result.amount === 'number' && !isNaN(result.amount)) {
+        giftCardAmount = result.amount; // Don't check > 0, as 0 is valid (though unlikely)
+      } else if (typeof result.amount === 'string') {
+        const parsed = parseFloat(result.amount);
+        if (!isNaN(parsed)) {
+          giftCardAmount = parsed;
+        }
+      }
+    }
+    
+    console.log('🔍 Amount extraction in handleGiftCardValidation:', {
+      resultAmount: result.amount,
+      resultAmountType: typeof result.amount,
+      extractedAmount: giftCardAmount,
+      isValid: !isNaN(giftCardAmount)
+    });
+    
+    // If amount is still 0 but validation is valid, log error
+    if (giftCardAmount === 0 && result.valid) {
+      console.error('❌ CRITICAL ERROR: Gift card amount is 0 but validation is valid!', {
+        result,
+        giftCardAmount,
+        originalAmount: result.amount,
+        originalType: typeof result.amount
+      });
+    }
+    
+    // Create the result object with the gift card amount
+    const finalResult = {
+      valid: result.valid,
+      amount: giftCardAmount, // Store the extracted amount
+      remainingAmount: result.remainingAmount || 0,
+      cardCode: result.cardCode,
+      error: result.error
+    };
+    
+    console.log('✅ Final gift card result to store:', finalResult);
+    console.log('🔍 Amount verification:', {
+      originalAmount: result.amount,
+      giftCardAmount: giftCardAmount,
+      willBeStored: finalResult.amount,
+      isValid: giftCardAmount > 0
+    });
+    
+    // Store the result in state FIRST
+    setGiftCardResult(finalResult);
     setShowGiftCardScanner(false);
     
     if (result.valid) {
-      setIsProcessingPayment(true);
-      // Gift card is valid, complete the purchase
-      try {
-        props.onSuccess(result.cardCode, 'gift-card');
-      } finally {
-        setIsProcessingPayment(false);
+      // Calculate the new amount after gift card deduction (same logic as discount card)
+      // Use giftCardAmount from the extraction above
+      console.log('💰 Gift card amount for calculation:', giftCardAmount);
+      console.log('💰 Current state before calculation:', {
+        discountedAmount,
+        propsAmount: props.amount,
+        discountCardResult: discountCardResult?.finalAmount
+      });
+      
+      // Use the current discounted amount (which may already have discount applied)
+      const currentAmount = discountedAmount > 0 && discountedAmount < props.amount 
+        ? discountedAmount 
+        : (discountCardResult?.finalAmount || props.amount);
+      
+      // Calculate new amount: subtract gift card amount from current amount
+      const newAmount = Math.max(0, currentAmount - giftCardAmount);
+      
+      console.log('💰 Gift card amount calculation:', {
+        giftCardAmount,
+        currentAmount,
+        discountedAmount,
+        originalAmount: props.amount,
+        newAmount,
+        calculation: `${currentAmount} - ${giftCardAmount} = ${newAmount}`,
+        discountCardApplied: !!discountCardResult
+      });
+      
+      // Update the discounted amount
+      setDiscountedAmount(newAmount);
+      console.log('✅ Updated discountedAmount to:', newAmount);
+      
+      // CRITICAL: Also update giftCardResult to ensure amount is stored correctly
+      setGiftCardResult(prev => {
+        if (prev && prev.valid) {
+          const updated = { ...prev, amount: giftCardAmount };
+          console.log('🔄 Ensuring giftCardResult has correct amount:', updated);
+          return updated;
+        }
+        return prev;
+      });
+      
+      // IMPORTANT: Update giftCardResult again to ensure amount is stored correctly
+      // This ensures the UI displays the correct amount
+      setGiftCardResult(prev => {
+        if (prev && prev.valid) {
+          const updated = { ...prev, amount: giftCardAmount };
+          console.log('🔄 Updating giftCardResult with amount:', updated);
+          return updated;
+        }
+        return prev;
+      });
+      
+      // Reload payment settings to update available methods with new amount
+      loadPaymentSettings();
+      
+      // If the gift card covers the full amount (or more), complete the purchase immediately
+      if (newAmount <= 0) {
+        setIsProcessingPayment(true);
+        // Use the gift card and complete the purchase
+        (async () => {
+          try {
+            if (user) {
+              const useResponse = await fetch('/api/gift-cards/use', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  cardCode: result.cardCode,
+                  amount: giftCardAmount,
+                  customerId: user.id,
+                  customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Customer',
+                  businessId: props.businessId,
+                  orderId: props.orderId,
+                  bookingId: undefined,
+                  transactionType: props.transactionType
+                })
+              });
+              
+              if (!useResponse.ok) {
+                const errorData = await useResponse.json();
+                throw new Error(errorData.error || 'Failed to use gift card');
+              }
+            }
+            props.onSuccess(result.cardCode, 'gift-card');
+          } catch (error: any) {
+            console.error('Error using gift card:', error);
+            setError(error.message || 'Failed to complete purchase with gift card');
+            setIsProcessingPayment(false);
+          }
+        })();
+      } else {
+        // Gift card partially covers the amount, show remaining amount
+        console.log(`💳 Gift card partially covers amount. Remaining: ${newAmount} CHF`);
+        setError(null);
+        // Show payment methods for remaining amount
+        setShowMethodSelection(true);
       }
     } else {
       setError(result.error || 'Gift card validation failed');
@@ -428,6 +649,8 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
 
   const handleCloseGiftCardScanner = () => {
     setShowGiftCardScanner(false);
+    // Don't clear giftCardResult - keep it applied if it was already validated
+    // This allows user to close scanner and still see the discount applied
   };
 
   const handleDiscountCardValidation = (result: { 
@@ -551,27 +774,63 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
                     {/* Amount Display */}
                     <div className="text-center">
                       <p className="text-gray-400 text-sm sm:text-base px-2">{props.description}</p>
-                      {discountCardResult && discountCardResult.valid ? (
+                      {(discountCardResult && discountCardResult.valid) || (giftCardResult && giftCardResult.valid) || discountedAmount < props.amount ? (
                         <div className="space-y-2 mt-4">
-                          <div className="flex items-center justify-center space-x-2 text-green-400">
-                            <FiPercent size={16} />
-                            <span className="text-sm">
-                              {discountCardResult.discountPercentage}% {t('Discount Applied')}
-                            </span>
-                          </div>
+                          {discountCardResult && discountCardResult.valid && (
+                            <div className="flex items-center justify-center space-x-2 text-green-400">
+                              <FiPercent size={16} />
+                              <span className="text-sm">
+                                {discountCardResult.discountPercentage}% {t('Discount Applied')}
+                              </span>
+                            </div>
+                          )}
+                          {giftCardResult && giftCardResult.valid && (
+                            <div className="flex items-center justify-center space-x-2 text-purple-400">
+                              <FiGift size={16} />
+                              <span className="text-sm">
+                                {t('Gift Card Applied')}: CHF {(() => {
+                                  // Use the amount directly from giftCardResult
+                                  // Log the current state for debugging
+                                  console.log('🎨 Rendering gift card amount. Current giftCardResult:', giftCardResult);
+                                  
+                                  const displayAmount = giftCardResult.amount && typeof giftCardResult.amount === 'number' && !isNaN(giftCardResult.amount)
+                                    ? giftCardResult.amount
+                                    : (typeof giftCardResult.amount === 'string' ? parseFloat(giftCardResult.amount) : 0);
+                                  
+                                  if (displayAmount === 0 || isNaN(displayAmount)) {
+                                    console.error('❌ ERROR: Display amount is 0 or NaN!', {
+                                      giftCardResult,
+                                      amount: giftCardResult.amount,
+                                      amountType: typeof giftCardResult.amount,
+                                      displayAmount,
+                                      isValid: !isNaN(displayAmount) && displayAmount > 0
+                                    });
+                                  } else {
+                                    console.log('✅ Displaying gift card amount:', displayAmount);
+                                  }
+                                  
+                                  return (displayAmount || 0).toFixed(2);
+                                })()}
+                              </span>
+                            </div>
+                          )}
                           <div className="text-gray-400 line-through text-lg">
                             CHF {props.amount.toFixed(2)}
                           </div>
                           <p className="text-xl sm:text-2xl font-bold text-[#D91CD2]">
                             CHF {discountedAmount.toFixed(2)}
                           </p>
-                          <p className="text-sm text-green-400">
-                            {t('You save')} CHF {
-                              discountCardResult.discountAmount 
-                                ? discountCardResult.discountAmount.toFixed(2)
-                                : (props.amount - discountedAmount).toFixed(2)
-                            }
-                          </p>
+                          {(discountCardResult?.discountAmount || giftCardResult?.amount || discountedAmount < props.amount) && (
+                            <p className="text-sm text-green-400">
+                              {t('You save')} CHF {
+                                discountCardResult?.discountAmount 
+                                  ? (discountCardResult.discountAmount + (giftCardResult?.amount || 0)).toFixed(2)
+                                  : giftCardResult?.amount 
+                                    ? giftCardResult.amount.toFixed(2)
+                                    : (props.amount - discountedAmount).toFixed(2)
+                              }
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xl sm:text-2xl font-bold text-[#D91CD2] mt-4">
@@ -707,7 +966,7 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
             handlePaymentFailure();
           } : props.onClose}
           onSuccess={handlePaymentSuccess}
-          amount={props.amount}
+          amount={discountedAmount}
           title={props.title}
           description={props.description}
           userId={props.userId}
@@ -723,7 +982,7 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
             handlePaymentFailure();
           } : props.onClose}
           onSuccess={handlePaymentSuccess}
-          amount={props.amount}
+          amount={discountedAmount}
           title={props.title}
           description={props.description}
           userId={props.userId}
@@ -739,7 +998,7 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
             handlePaymentFailure();
           } : props.onClose}
           onSuccess={handlePaymentSuccess}
-          amount={props.amount}
+          amount={discountedAmount}
           title={props.title}
           description={props.description}
           userId={props.userId}
@@ -779,10 +1038,10 @@ export default function PaymentHandlerWithCredits(props: PaymentHandlerWithCredi
           onValidation={handleGiftCardValidation}
           onClose={handleCloseGiftCardScanner}
           customerId={user.id}
-          customerName={`${user.firstName} ${user.lastName}`}
+          customerName={`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Customer'}
           businessId={props.businessId}
           orderId={props.orderId}
-          requestedAmount={props.amount}
+          requestedAmount={discountedAmount || props.amount}
           transactionType={props.transactionType}
         />
       )}

@@ -221,43 +221,43 @@ export default function SimplifiedDiscountCardModal({
     
     if (!allSchedulesLoaded) return;
     
-    const sessionsMap: Record<string, string[]> = {};
+      const sessionsMap: Record<string, string[]> = {};
     let hasSessionsToLoad = false;
-    
-    // First, try to load from courseSessions (new format: Record<courseId, sessionIds[]>)
-    if (editingCard.courseSessions && typeof editingCard.courseSessions === 'object' && editingCard.courseSessions !== null) {
+      
+      // First, try to load from courseSessions (new format: Record<courseId, sessionIds[]>)
+      if (editingCard.courseSessions && typeof editingCard.courseSessions === 'object' && editingCard.courseSessions !== null) {
       hasSessionsToLoad = true;
-      Object.keys(editingCard.courseSessions).forEach(courseId => {
-        const sessionIds = editingCard.courseSessions[courseId];
-        if (Array.isArray(sessionIds) && sessionIds.length > 0) {
-          // Verify that these session IDs exist in the loaded schedules
-          const courseSchedules = allCourseSchedules[courseId] || [];
-          const validSessionIds = sessionIds.filter(sessionId => 
+        Object.keys(editingCard.courseSessions).forEach(courseId => {
+          const sessionIds = editingCard.courseSessions[courseId];
+          if (Array.isArray(sessionIds) && sessionIds.length > 0) {
+            // Verify that these session IDs exist in the loaded schedules
+            const courseSchedules = allCourseSchedules[courseId] || [];
+            const validSessionIds = sessionIds.filter(sessionId => 
+              courseSchedules.some(schedule => schedule.id === sessionId)
+            );
+            if (validSessionIds.length > 0) {
+              sessionsMap[courseId] = validSessionIds;
+            }
+          }
+        });
+      }
+      
+      // If no courseSessions found, try legacy format: recurringSchedule for single course
+    if (!hasSessionsToLoad && editingCard.recurringSchedule && Array.isArray(editingCard.recurringSchedule) && editingCard.recurringSchedule.length > 0) {
+      hasSessionsToLoad = true;
+        // For legacy format, use the first selected course
+        const firstCourse = selectedCourses[0];
+        if (firstCourse) {
+          const courseSchedules = allCourseSchedules[firstCourse.id] || [];
+          const validSessionIds = editingCard.recurringSchedule.filter((sessionId: string) => 
             courseSchedules.some(schedule => schedule.id === sessionId)
           );
           if (validSessionIds.length > 0) {
-            sessionsMap[courseId] = validSessionIds;
+            sessionsMap[firstCourse.id] = validSessionIds;
           }
         }
-      });
-    }
-    
-    // If no courseSessions found, try legacy format: recurringSchedule for single course
-    if (!hasSessionsToLoad && editingCard.recurringSchedule && Array.isArray(editingCard.recurringSchedule) && editingCard.recurringSchedule.length > 0) {
-      hasSessionsToLoad = true;
-      // For legacy format, use the first selected course
-      const firstCourse = selectedCourses[0];
-      if (firstCourse) {
-        const courseSchedules = allCourseSchedules[firstCourse.id] || [];
-        const validSessionIds = editingCard.recurringSchedule.filter((sessionId: string) => 
-          courseSchedules.some(schedule => schedule.id === sessionId)
-        );
-        if (validSessionIds.length > 0) {
-          sessionsMap[firstCourse.id] = validSessionIds;
-        }
       }
-    }
-    
+      
     // Update sessions map if we found sessions to load
     if (hasSessionsToLoad && Object.keys(sessionsMap).length > 0) {
       setCourseSessionsMap(prev => {
@@ -730,47 +730,47 @@ export default function SimplifiedDiscountCardModal({
                     ) : (
                       <>
                         <div className={`space-y-2 max-h-48 overflow-y-auto ${hasError ? 'border border-red-500 rounded-lg p-2' : ''}`}>
-                          {timeSlots.map((slot) => {
-                            const isSelected = selectedSessions.includes(slot.id);
-                            return (
-                              <label
-                                key={slot.id}
-                                className="flex items-center space-x-3 p-2 hover:bg-gray-700/50 rounded cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    setCourseSessionsMap(prev => {
-                                      const currentSessions = prev[course.id] || [];
-                                      if (e.target.checked) {
-                                        return {
-                                          ...prev,
-                                          [course.id]: [...currentSessions, slot.id]
-                                        };
-                                      } else {
-                                        return {
-                                          ...prev,
-                                          [course.id]: currentSessions.filter(id => id !== slot.id)
-                                        };
-                                      }
-                                    });
-                                    // Clear error when session is selected
-                                    if (errors.schedule) {
-                                      setErrors(prev => {
-                                        const newErrors = { ...prev };
-                                        delete newErrors.schedule;
-                                        return newErrors;
-                                      });
+                        {timeSlots.map((slot) => {
+                          const isSelected = selectedSessions.includes(slot.id);
+                          return (
+                            <label
+                              key={slot.id}
+                              className="flex items-center space-x-3 p-2 hover:bg-gray-700/50 rounded cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  setCourseSessionsMap(prev => {
+                                    const currentSessions = prev[course.id] || [];
+                                    if (e.target.checked) {
+                                      return {
+                                        ...prev,
+                                        [course.id]: [...currentSessions, slot.id]
+                                      };
+                                    } else {
+                                      return {
+                                        ...prev,
+                                        [course.id]: currentSessions.filter(id => id !== slot.id)
+                                      };
                                     }
-                                  }}
-                                  className="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                                />
-                                <span className="text-white text-sm">{slot.label}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
+                                  });
+                                  // Clear error when session is selected
+                                  if (errors.schedule) {
+                                    setErrors(prev => {
+                                      const newErrors = { ...prev };
+                                      delete newErrors.schedule;
+                                      return newErrors;
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                              />
+                              <span className="text-white text-sm">{slot.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                         {hasError && (
                           <p className="mt-2 text-sm text-red-400">{errors.schedule}</p>
                         )}
